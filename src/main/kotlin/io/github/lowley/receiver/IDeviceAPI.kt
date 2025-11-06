@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface IDeviceAPI {
 
-    fun deviceLogEvents(port: Int): Either<AdbError, Flow<RichLogEvent>>
+    fun deviceLogEvents(port: Int = 7777): Either<AdbError, Flow<RichLogEvent>>
 
 
 

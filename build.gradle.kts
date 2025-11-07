@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     kotlin("jvm") version "2.2.20"
     kotlin("plugin.serialization") version "1.9.24"
@@ -33,7 +35,15 @@ dependencies {
     /////////////////////////////////////////
     implementation("io.arrow-kt:arrow-core:1.2.4")
 
+    //////////////////////////////
+    // injections de dépendance //
+    //////////////////////////////
+    implementation("io.insert-koin:koin-core:4.0.0")
 
+    ///////////////////////////////////////
+    // parsing du HTML des textes de log //
+    ///////////////////////////////////////
+    implementation("org.jsoup:jsoup:1.21.2")
 }
 
 tasks.test {
@@ -51,4 +61,8 @@ publishing {
             artifactId = "WriterAPI"
         }
     }
+}
+val compileKotlin: KotlinCompile by tasks
+compileKotlin.compilerOptions {
+    freeCompilerArgs.set(listOf("-Xnested-type-aliases"))
 }

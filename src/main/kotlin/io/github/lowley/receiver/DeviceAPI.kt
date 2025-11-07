@@ -5,7 +5,7 @@ import arrow.core.left
 import arrow.core.raise.either
 import arrow.core.right
 import com.google.gson.Gson
-import io.github.lowley.common.RichLogEvent
+import io.github.lowley.common.RichLog
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import java.io.IOException
@@ -17,7 +17,7 @@ class DeviceAPI : IDeviceAPI {
 
     private var client: Socket? = null
 
-    override fun deviceLogEvents(port: Int): Either<AdbError, Flow<RichLogEvent>> =
+    override fun deviceLogEvents(port: Int): Either<AdbError, Flow<RichLog>> =
         either {
             flow {
                 reverseAdbPort(port).bind()
@@ -32,7 +32,7 @@ class DeviceAPI : IDeviceAPI {
 
                     withClientLines(client).forEach { line ->
                         try {
-                            val event = Gson().fromJson(line, RichLogEvent::class.java)
+                            val event = Gson().fromJson(line, RichLog::class.java)
                             emit(event)
                         } catch (ex: Exception) {
                             println("json invalide: $line")

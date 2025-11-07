@@ -5,7 +5,10 @@ import arrow.core.left
 import arrow.core.raise.either
 import arrow.core.right
 import com.google.gson.Gson
+import io.github.lowley.common.AdbError
 import io.github.lowley.common.RichLog
+import io.github.lowley.common.searchClient
+import io.github.lowley.common.serverSocket
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import java.io.IOException
@@ -42,22 +45,6 @@ class DeviceAPI : IDeviceAPI {
             }
         }
 
-
-    private fun withClientLines(client: Socket?): Sequence<String> {
-
-        val result = client.use { cli ->
-            if (cli == null)
-                return@use sequenceOf("")
-            if (client == null)
-                return@use emptySequence()
-
-            val reader = client.getInputStream().bufferedReader(Charsets.UTF_8)
-            return@use reader.lineSequence()
-        }
-
-        return result
-    }
-
     private fun reverseAdbPort(port: Int): Either<AdbError, Unit> = try {
 
         var process: Process? = null
@@ -78,26 +65,18 @@ class DeviceAPI : IDeviceAPI {
         AdbError.ExceptionThrown(ex).left()
     }
 
-    private fun serverSocket(port: Int): Either<AdbError, ServerSocket> = try {
-        val result = ServerSocket(port)
-        result.right()
+    private fun withClientLines(client: Socket?): Sequence<String> {
 
-    } catch (ex: IOException) {
-        ex.printStackTrace()
-        AdbError.ExceptionThrown(ex).left()
-    }
+        val result = client.use { cli ->
+            if (cli == null)
+                return@use sequenceOf("")
+            if (client == null)
+                return@use emptySequence()
 
-    private fun searchClient(server: ServerSocket): Either<AdbError, Socket> = try {
-        val client = server.accept()
-        client.right()
+            val reader = client.getInputStream().bufferedReader(Charsets.UTF_8)
+            return@use reader.lineSequence()
+        }
 
-    } catch (ex: IOException) {
-        ex.printStackTrace()
-        AdbError.ExceptionThrown(ex).left()
-    }
-
-    sealed interface AdbError {
-        data class CommandFailed(val exitCode: Int, val output: String) : AdbError
-        data class ExceptionThrown(val throwable: Throwable) : AdbError
+        return result
     }
 }

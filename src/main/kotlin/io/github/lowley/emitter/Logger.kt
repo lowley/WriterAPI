@@ -1,18 +1,20 @@
 package io.github.lowley.emitter
 
+import io.github.lowley.common.RichLog
 import io.github.lowley.common.RichSegment
+import io.github.lowley.common.RichText
 import org.koin.core.context.GlobalContext
 
 ////////////////////
 // point d'entrée //
 ////////////////////
 
-fun write(block: LogBuilder.() -> Unit){
+fun write(block: LogBuilder.() -> Unit) {
     val koin = GlobalContext.get()
     val builder: LogBuilder = koin.get()
 
     builder.block()
-    builder.buildAndSend()
+    builder.postTreatment()
 }
 
 ////////////////////////////////////////
@@ -21,16 +23,29 @@ fun write(block: LogBuilder.() -> Unit){
 
 class LogBuilder(
     val parser: IParser
-){
+) {
     val segments = mutableListOf<RichSegment>()
 
-    fun buildAndSend(){
+    /**
+     * traitement final de la ligne de log
+     */
+    fun postTreatment() {
+        val richLog = RichLog(
+            richText = RichText(segments)
+        )
+
+        send(richLog)
+
+
+    }
+
+    private fun send(richLog: RichLog) {
 
 
 
     }
 
-    fun test(){
+    fun test() {
         write {
             log("truc")
             log("machin")

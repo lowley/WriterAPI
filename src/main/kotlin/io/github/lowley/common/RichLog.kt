@@ -26,7 +26,12 @@ data class RichSegment(
 
 @Serializable
 @JvmInline
-value class TextType(val text: String)
+value class TextType(val text: String){
+
+    override fun toString(): String {
+        return text
+    }
+}
 
 @Serializable
 data class Style(

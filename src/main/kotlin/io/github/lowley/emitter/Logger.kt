@@ -37,7 +37,7 @@ class LogBuilder(
      */
     fun postTreatment() {
         val richLog = RichLog(
-            richText = RichText(segments)
+            richText = RichText(segments.toList())
         )
 
         send(richLog)

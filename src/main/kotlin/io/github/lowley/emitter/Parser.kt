@@ -44,7 +44,7 @@ class Parser: IParser {
         when (element.tagName().lowercase()) {
             "b", "strong", "bold" -> style = style.copy(bold = true)
 //            "i", "em"     -> s = s.copy(italic = true)
-//            "u"           -> s = s.copy(underline = true)
+            "u"           -> style = style.copy(underline = true)
 //            "span"        -> {
 //                val styleAttr = element.attr("style")
 //                // ici tu peux parser styleAttr pour trouver "color: #xxxxxx"

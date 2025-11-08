@@ -18,12 +18,11 @@ import kotlin.sequences.forEach
 
 class DeviceAPI : IDeviceAPI {
 
-    private var client: Socket? = null
     private var server: ServerSocket? = null
+    private var client: Socket? = null
 
     override fun deviceLogEvents(port: Int): Either<AdbError, Flow<RichLog>> =
         either {
-
             reverseAdbPort(port).bind()
             println("DeviceAPI: Reverse Adb activé sur port $port")
 

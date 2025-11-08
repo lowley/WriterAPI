@@ -36,6 +36,7 @@ value class TextType(val text: String){
 @Serializable
 data class Style(
     val bold: Boolean = false,
+    val underline: Boolean = false,
 ) {
 
 }

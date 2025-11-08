@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.flow
 import java.io.IOException
 import java.net.ServerSocket
 import java.net.Socket
+import java.net.SocketException
 import kotlin.sequences.forEach
 
 class DeviceAPI : IDeviceAPI {
@@ -24,23 +25,33 @@ class DeviceAPI : IDeviceAPI {
         either {
 
             reverseAdbPort(port).bind()
-            println("Reverse Adb activé sur port $port")
+            println("DeviceAPI: Reverse Adb activé sur port $port")
 
             val server = serverSocket(port).bind()
-            println("Server en écoute sur ${server!!.localPort}")
+            println("DeviceAPI: Server en écoute sur ${server!!.localPort}")
 
             flow {
 
                 while (true) {
                     client = searchClient(server).bind()
-                    println("Client de réception de messages connecté sur ${client!!.inetAddress}")
+                    println("DeviceAPI: Client de réception de messages connecté sur ${client!!.inetAddress}")
 
                     withClientLines(client).forEach { line ->
                         try {
                             val event = Gson().fromJson(line, RichLog::class.java)
                             emit(event)
-                        } catch (ex: Exception) {
-                            println("json invalide: $line")
+                        }
+                        catch (ex: SocketException) {
+                            println("DeviceAPI: socket fermé")
+                            reverseAdbPort(port).bind()
+                            println("DeviceAPI: Reverse Adb activé sur port $port")
+
+                            val server = serverSocket(port).bind()
+                            println("DeviceAPI: Server en écoute sur ${server!!.localPort}")
+                        }
+
+                        catch (ex: Exception) {
+                            println("DeviceAPI: json invalide: $line")
                         }
                     }
                 }

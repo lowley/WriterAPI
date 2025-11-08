@@ -31,16 +31,10 @@ fun socket(port: Int, address: String = "127.0.0.1"): Either<AdbError, Socket> =
     result.right()
 
 }
-catch (ex: IOException) {
+catch (ex: Exception) {
     ex.printStackTrace()
     AdbError.ExceptionThrown(ex).left()
 }
-catch (ex: UnknownHostException) {
-    ex.printStackTrace()
-    AdbError.ExceptionThrown(ex).left()
-}
-
-
 
 sealed interface AdbError {
     data class CommandFailed(val exitCode: Int, val output: String) : AdbError

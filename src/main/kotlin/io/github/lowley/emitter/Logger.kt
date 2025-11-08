@@ -45,7 +45,7 @@ class LogBuilder(
 
     private fun send(richLog: RichLog) {
         scope.launch {
-            val result = api.sendRichLog(richLog)
+            val result = api.sendRichLog(richLog, 7777)
             result.fold(
                 ifLeft = {
                     println("erreur d'envoi d'un richLog ${richLog.richText}")

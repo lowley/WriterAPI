@@ -11,6 +11,7 @@ import io.github.lowley.common.searchClient
 import io.github.lowley.common.serverSocket
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketException
 import kotlin.sequences.forEach
@@ -18,6 +19,7 @@ import kotlin.sequences.forEach
 class DeviceAPI : IDeviceAPI {
 
     private var client: Socket? = null
+    private var server: ServerSocket? = null
 
     override fun deviceLogEvents(port: Int): Either<AdbError, Flow<RichLog>> =
         either {
@@ -25,12 +27,15 @@ class DeviceAPI : IDeviceAPI {
             reverseAdbPort(port).bind()
             println("DeviceAPI: Reverse Adb activé sur port $port")
 
-            val server = serverSocket(port).bind()!!
-            println("DeviceAPI: Server en écoute sur ${server.localPort}")
+            server = serverSocket(port).bind()
+            if (server == null)
+                raise(AdbError.CommandFailed(1, "serveur nul"))
+
+            println("DeviceAPI: Server en écoute sur ${server!!.localPort}")
 
             flow {
                 while (true) {
-                    val cli = searchClient(server).bind()
+                    val cli = searchClient(server!!).bind()
                     client = cli
                     println("DeviceAPI: Client de réception de messages connecté sur ${cli.inetAddress}")
 
@@ -60,6 +65,11 @@ class DeviceAPI : IDeviceAPI {
                 }
             }
         }
+
+    override fun close() {
+        server?.close()
+        server = null
+    }
 
     private fun reverseAdbPort(port: Int): Either<AdbError, Unit> = try {
 

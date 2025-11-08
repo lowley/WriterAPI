@@ -11,8 +11,6 @@ import io.github.lowley.common.searchClient
 import io.github.lowley.common.serverSocket
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import java.io.IOException
-import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketException
 import kotlin.sequences.forEach
@@ -27,33 +25,38 @@ class DeviceAPI : IDeviceAPI {
             reverseAdbPort(port).bind()
             println("DeviceAPI: Reverse Adb activé sur port $port")
 
-            val server = serverSocket(port).bind()
-            println("DeviceAPI: Server en écoute sur ${server!!.localPort}")
+            val server = serverSocket(port).bind()!!
+            println("DeviceAPI: Server en écoute sur ${server.localPort}")
 
             flow {
-
                 while (true) {
-                    client = searchClient(server).bind()
-                    println("DeviceAPI: Client de réception de messages connecté sur ${client!!.inetAddress}")
+                    val cli = searchClient(server).bind()
+                    client = cli
+                    println("DeviceAPI: Client de réception de messages connecté sur ${cli.inetAddress}")
 
-                    withClientLines(client).forEach { line ->
+                    try {
+                        withClientLines(cli).forEach { line ->
+                            try {
+                                val event = Gson().fromJson(line, RichLog::class.java)
+                                emit(event)
+                            } catch (ex: Exception) {
+                                println("DeviceAPI: json invalide: $line")
+                            }
+                        }
+                        // ici, forEach s’est terminé proprement (readLine == null) → client fermé par le peer
+                        println("DeviceAPI: fin de flux (client fermé proprement)")
+                    } catch (ex: SocketException) {
+                        println("DeviceAPI: SocketException: ${ex.message}")
+                        // ici tu peux décider de relancer ou juste laisser la boucle while(true) reprendre
+                    } finally {
                         try {
-                            val event = Gson().fromJson(line, RichLog::class.java)
-                            emit(event)
+                            cli.close()
+                        } catch (_: Exception) {
                         }
-                        catch (ex: SocketException) {
-                            println("DeviceAPI: socket fermé")
-                            reverseAdbPort(port).bind()
-                            println("DeviceAPI: Reverse Adb activé sur port $port")
-
-                            val server = serverSocket(port).bind()
-                            println("DeviceAPI: Server en écoute sur ${server!!.localPort}")
-                        }
-
-                        catch (ex: Exception) {
-                            println("DeviceAPI: json invalide: $line")
-                        }
+                        client = null
                     }
+
+                    // la boucle while(true) repartira sur un nouveau searchClient(server)
                 }
             }
         }
@@ -78,18 +81,9 @@ class DeviceAPI : IDeviceAPI {
         AdbError.ExceptionThrown(ex).left()
     }
 
-    private fun withClientLines(client: Socket?): Sequence<String> {
+    private fun withClientLines(client: Socket): Sequence<String> {
 
-        val result = client.use { cli ->
-            if (cli == null)
-                return@use sequenceOf("")
-            if (cli == null)
-                return@use emptySequence()
-
-            val reader = cli.getInputStream().bufferedReader(Charsets.UTF_8)
-            return@use reader.lineSequence()
-        }
-
-        return result
+        val reader = client.getInputStream().bufferedReader(Charsets.UTF_8)
+        return reader.lineSequence()
     }
 }

@@ -24,28 +24,30 @@ class LoggerCommunicationAPI : ILoggerCommunicationAPI {
     suspend override fun sendRichLog(
         richLog: RichLog,
         port: Int
-    ): Either<AdbError, ILoggerCommunicationAPI.Success> = either {
+    ): Either<AdbError, ILoggerCommunicationAPI.Success> =
         withContext(Dispatchers.IO) {
-            val socket = socket(port).bind()
-            println("Socket prêt à émettre sur ${socket.localPort}")
+            either {
 
-            try {
-                socket.use { socket ->
-                    val writer = socket.getOutputStream().bufferedWriter(Charsets.UTF_8)
+                val socket = socket(port).bind()
+                println("Socket prêt à émettre sur ${socket.localPort}")
 
-                    val payload = Gson().toJson(richLog)
-                    writer.write(payload)
-                    writer.write("\n")
-                    writer.flush()
+                try {
+                    socket.use { socket ->
+                        val writer = socket.getOutputStream().bufferedWriter(Charsets.UTF_8)
+
+                        val payload = Gson().toJson(richLog)
+                        writer.write(payload)
+                        writer.write("\n")
+                        writer.flush()
+                    }
+                } catch (ex: Exception) {
+                    ex.printStackTrace()
+                    // fait sortir du either avec un Left
+                    raise(AdbError.ExceptionThrown(ex))
                 }
-            } catch (ex: Exception) {
-                ex.printStackTrace()
-                // fait sortir du either avec un Left
-                raise(AdbError.ExceptionThrown(ex))
+
+                // Si on arrive ici, tout s'est bien passé
+                ILoggerCommunicationAPI.Success
             }
         }
-
-        // Si on arrive ici, tout s'est bien passé
-        ILoggerCommunicationAPI.Success
-    }
 }

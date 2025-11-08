@@ -1,8 +1,8 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "2.2.0"
-    kotlin("plugin.serialization") version "2.2.0"
+    kotlin("jvm") version "2.0.21"
+    kotlin("plugin.serialization") version "2.0.21"
     `java-library`
     `maven-publish`
 }
@@ -44,6 +44,11 @@ dependencies {
     // parsing du HTML des textes de log //
     ///////////////////////////////////////
     implementation("org.jsoup:jsoup:1.21.2")
+
+    ////////////////
+    // reflection //
+    ////////////////
+    implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.24")
 }
 
 tasks.test {

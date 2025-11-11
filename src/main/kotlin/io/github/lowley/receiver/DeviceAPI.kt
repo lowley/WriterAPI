@@ -70,7 +70,7 @@ class DeviceAPI : IDeviceAPI {
         server = null
     }
 
-    private fun reverseAdbPort(port: Int): Either<AdbError, Unit> = try {
+    override fun reverseAdbPort(port: Int): Either<AdbError, Unit> = try {
 
         var process: Process? = null
         process = ProcessBuilder("adb", "reverse", "tcp:$port", "tcp:$port")
@@ -94,5 +94,15 @@ class DeviceAPI : IDeviceAPI {
 
         val reader = client.getInputStream().bufferedReader(Charsets.UTF_8)
         return reader.lineSequence()
+    }
+
+    override fun readClientLines(client: Socket, onLineReceived: suspend (line: String) -> Unit) {
+        client.getInputStream()
+            .bufferedReader(Charsets.UTF_8)
+            .use { reader ->
+                for (line in reader.lineSequence()) {
+                    // traite line
+                }
+            }
     }
 }

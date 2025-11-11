@@ -1,8 +1,6 @@
 package io.github.lowley.emitter
 
 import arrow.core.Either
-import arrow.core.computations.ResultEffect.bind
-import arrow.core.computations.either
 import arrow.core.raise.either
 import arrow.core.right
 import com.google.gson.Gson

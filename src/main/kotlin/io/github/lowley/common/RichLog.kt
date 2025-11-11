@@ -9,7 +9,23 @@ data class RichLog(
     val timestampMillis: Long = Calendar.getInstance().timeInMillis,
     val richText: RichText
 
-)
+){
+    companion object {
+        val EMPTY: RichLog = RichLog(0L, RichText(listOf(RichSegment(TextType("fggerg"),
+            Style()))))
+    }
+
+    fun raw(): String {
+        val result = StringBuilder()
+
+        richText.richSegments.forEach {
+            result.append(it.text.text)
+        }
+
+        return result.toString()
+    }
+
+}
 
 @Serializable
 data class RichText(

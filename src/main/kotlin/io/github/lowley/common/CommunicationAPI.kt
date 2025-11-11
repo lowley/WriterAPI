@@ -8,7 +8,7 @@ import java.net.ServerSocket
 import java.net.Socket
 import java.net.UnknownHostException
 
-fun serverSocket(port: Int): Either<AdbError, ServerSocket> = try {
+fun serverSocket(port: Int = 7777): Either<AdbError, ServerSocket> = try {
     val result = ServerSocket(port)
     result.right()
 

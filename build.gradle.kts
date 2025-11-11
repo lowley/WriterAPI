@@ -1,8 +1,10 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "2.0.21"
-    kotlin("plugin.serialization") version "2.0.21"
+    //2.0.21
+    kotlin("jvm") version "2.2.21"
+    kotlin("plugin.serialization") version "2.2.21"
     `java-library`
     `maven-publish`
 }
@@ -23,7 +25,8 @@ dependencies {
     ////////////////////////
     // pour @Serializable //
     ////////////////////////
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    //1.7.3
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 
     ////////////////////
     // pour Flow<xxx> //
@@ -48,7 +51,25 @@ dependencies {
     ////////////////
     // reflection //
     ////////////////
-    implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.24")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:2.2.21")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:2.2.21")
+
+    ///////////////////
+    // state machine //
+    ///////////////////
+    val KStateTag = "0.35.0"
+    implementation("io.github.nsk90:kstatemachine:$KStateTag")
+    implementation("io.github.nsk90:kstatemachine-coroutines:$KStateTag")
+    implementation("io.github.nsk90:kstatemachine-serialization:$KStateTag")
+
+}
+
+configurations.all {
+    resolutionStrategy {
+        val force = force("org.jetbrains.kotlin:kotlin-stdlib:2.2.21")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.2.21")
+        force("org.jetbrains.kotlin:kotlin-reflect:2.2.21")
+    }
 }
 
 tasks.test {
@@ -56,7 +77,7 @@ tasks.test {
 }
 
 kotlin {
-    jvmToolchain(11)
+    jvmToolchain(17)
 }
 
 publishing {
@@ -67,7 +88,11 @@ publishing {
         }
     }
 }
+
 val compileKotlin: KotlinCompile by tasks
 compileKotlin.compilerOptions {
-    freeCompilerArgs.set(listOf("-Xnested-type-aliases"))
+    jvmTarget.set(JvmTarget.JVM_17)
+    freeCompilerArgs.set(listOf(
+        "-Xnested-type-aliases"
+    ))
 }

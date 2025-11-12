@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "io.github.lowley"
-version = "1.0.2"
+version = "1.0.3"
 
 repositories {
     mavenCentral()
@@ -62,14 +62,6 @@ dependencies {
     implementation("io.github.nsk90:kstatemachine-coroutines:$KStateTag")
     implementation("io.github.nsk90:kstatemachine-serialization:$KStateTag")
 
-}
-
-configurations.all {
-    resolutionStrategy {
-        val force = force("org.jetbrains.kotlin:kotlin-stdlib:2.2.21")
-        force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.2.21")
-        force("org.jetbrains.kotlin:kotlin-reflect:2.2.21")
-    }
 }
 
 tasks.test {

@@ -12,6 +12,17 @@ plugins {
 group = "io.github.lowley"
 version = "1.0.3"
 
+publishing {
+    publications {
+        create<MavenPublication>("release") {
+            from(components["java"])
+            artifactId = "writer-api"   // en minuscules, style kebab-case
+            pom { name.set("WriterAPI") }
+        }
+    }
+    repositories { mavenLocal() }
+}
+
 repositories {
     mavenCentral()
     google()

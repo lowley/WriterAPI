@@ -72,15 +72,6 @@ kotlin {
     jvmToolchain(17)
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("WriterAPI") {
-            from(components["java"])
-            artifactId = "WriterAPI"
-        }
-    }
-}
-
 val compileKotlin: KotlinCompile by tasks
 compileKotlin.compilerOptions {
     jvmTarget.set(JvmTarget.JVM_17)

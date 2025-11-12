@@ -42,8 +42,9 @@ sealed class ViewerAppStates : DefaultState() {
 }
 
 object AutomaticallyLaunchAdbComManager {
+    private val adbComManager: AdbComManager by inject(AdbComManager::class.java)
     init {
-        val adbComManager by inject<AdbComManager>(AdbComManager::class.java)
+        println(adbComManager.toString().substring(0,0))
     }
 }
 
@@ -57,8 +58,10 @@ class AdbComManager(
     var serverSocket: Option<ServerSocket> = None
 
     init {
-        scope.launch() {
-            adbComMachine = getStateMachine(scope)
+        if (adbComMachine == null) {
+            scope.launch() {
+                adbComMachine = getStateMachine(scope)
+            }
         }
     }
 

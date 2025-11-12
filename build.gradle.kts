@@ -15,7 +15,7 @@ version = "1.0.3"
 repositories {
     mavenCentral()
     google()
-    maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+//    maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
 }
 
 dependencies {

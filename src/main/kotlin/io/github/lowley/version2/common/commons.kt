@@ -7,4 +7,5 @@ value class StateMessage(val message: String){
     }
 }
 
+
 fun String.toStateMessage(): StateMessage = StateMessage(this)

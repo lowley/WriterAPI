@@ -20,7 +20,7 @@ val appModule = module {
     single { LogBuilder(get(), get()) }
     single<IDeviceAPI> { DeviceAPI() }
     single<IAndroidAppComponent> { AndroidAppComponent() }
-    single<IViewerAppComponent> { ViewerAppComponent() }
+    single<IViewerAppComponent> { ViewerAppComponent }
     single {  io.github.lowley.version2.androidApp.utils.AdbComManager(get(), get()) }
     single {  io.github.lowley.version2.viewer.utils.AdbComManager(get(), get()) }
 }

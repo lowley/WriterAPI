@@ -24,5 +24,6 @@ interface IViewerAppComponent {
     // flux des logs reçus //
     /////////////////////////
     val logs: SharedFlow<RichLog>
+    fun emit(log: RichLog)
 }
 

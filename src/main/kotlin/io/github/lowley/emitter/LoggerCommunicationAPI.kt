@@ -61,12 +61,14 @@ class LoggerCommunicationAPI : ILoggerCommunicationAPI {
                     )
 
                     //mode normal
-//                    specialRichLog = null
+                    specialRichLog = null
 
                     val payload = Gson().toJson(specialRichLog ?: richLog)
                     w.write(payload)
                     w.write("\n")
                     w.flush()
+
+                    println("richLog emitted")
 
                 } catch (ex: Exception) {
                     ex.printStackTrace()

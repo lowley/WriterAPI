@@ -31,6 +31,8 @@ import kotlin.getValue
 import java.net.ServerSocket
 import java.net.Socket
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import ru.nsk.kstatemachine.statemachine.BuildingStateMachine
 
 
 sealed class ViewerAppStates : DefaultState() {
@@ -69,233 +71,285 @@ class AdbComManager(
 
         val machine = createStateMachine(scope = scope) {
 
-            //////////////////
-            // disconnected //
-            //////////////////
-            addInitialState(ViewerAppStates.Disconnected) {
-                onEntry { scope ->
-                    if (component.androidAppLogEnabled.value) {
-                        val result = deviceAPI.reverseAdbPort()
-                        result.fold(
-                            ifLeft = { error ->
-                                component.setStateMessage("reverseAdb en erreur".toStateMessage())
-                                println("state Disconnected: reverseAdb en erreur")
-                                machine.processEvent(AppEvent.GoOnError(error.toErrorMessage()))
-                            },
-                            ifRight = {
-                                val result2 = serverSocket()
-                                result2.fold(
-                                    ifLeft = { error ->
-                                        println("state Disconnected: serverSocket pas obtenu")
-                                        component.setStateMessage("serverSocket pas obtenu".toStateMessage())
-                                        machine.processEvent(AppEvent.GoOnError(error.toErrorMessage()))
-                                    },
-                                    ifRight = { seso ->
-                                        println("state Disconnected: serverSocket obtenu")
-                                        component.setStateMessage("serverSocket obtenu".toStateMessage())
-                                        serverSocket = Some(seso)
-
-                                        machine.processEvent(AppEvent.StartListening(seso))
-                                    }
-                                )
-                            }
-                        )
-                    } else {
-                        component.setStateMessage("state Disconnected: désactivation demandée".toStateMessage())
-                        machine.processEvent(AppEvent.Disable)
-                    }
-                }
-                onExit { }
-
-                transition<AppEvent.StartListening> {
-                    targetState = ViewerAppStates.Listening
-                    onTriggered { scope ->
-                        println("transition StartListening")
-                        scope.transition.argument = scope.event.serverSocket
-                    }
-                }
-
-                transition<AppEvent.GoOnError> {
-                    targetState = ViewerAppStates.Error
-                    onTriggered { scope ->
-                        println("transition GoOnError")
-                        scope.transition.argument = scope.event.text
-                    }
-                }
-
-                transition<AppEvent.Disable> {
-                    targetState = ViewerAppStates.Disabled
-                    onTriggered { scope ->
-                        println("transition Disable")
-                    }
-                }
+            with<BuildingStateMachine, Unit>(this@createStateMachine) {
+                disconnectedState()
             }
 
-            ///////////////
-            // listening //
-            ///////////////
-            addState(ViewerAppStates.Listening) {
-                onEntry { scope ->
-
-                    if (!component.androidAppLogEnabled.value) {
-                        component.setStateMessage("state Listening: désactivation demandée".toStateMessage())
-                        machine.processEvent(AppEvent.Disable)
-                        return@onEntry
-                    }
-
-                    val serverSocket = scope.transition.argument as? ServerSocket
-                    println("state Listening: socket: $serverSocket")
-
-                    if (serverSocket != null) {
-                        val result = searchClient(serverSocket)
-                        result.fold(
-                            ifLeft = { error ->
-                                println("state Listening: erreur lors recherche client")
-                                component.setStateMessage("erreur lors recherche client".toStateMessage())
-                                machine.processEvent(AppEvent.GoOnError(error.toErrorMessage()))
-                            },
-                            ifRight = { so ->
-                                println("state Listening: client obtenu")
-                                component.setStateMessage("client obtenu".toStateMessage())
-                                machine.processEvent(AppEvent.Connect(so))
-                            }
-                        )
-                    }
-                }
-                onExit { }
-
-                transition<AppEvent.Disconnect> {
-                    targetState = ViewerAppStates.Disconnected
-                    onTriggered { scope ->
-                        println("transition Disconnect")
-                    }
-                }
-
-                transition<AppEvent.Connect> {
-                    targetState = ViewerAppStates.Connected
-                    onTriggered { scope ->
-                        println("transition Connect")
-                        scope.transition.argument = scope.event.socket
-                    }
-                }
-
-                transition<AppEvent.GoOnError> {
-                    targetState = ViewerAppStates.Error
-                    onTriggered { scope ->
-                        println("transition GoOnError")
-                        scope.transition.argument = scope.event.text
-                    }
-                }
-
-                transition<AppEvent.Disable> {
-                    targetState = ViewerAppStates.Disabled
-                    onTriggered { scope ->
-                        println("transition Disable")
-                    }
-                }
+            with<BuildingStateMachine, Unit>(this@createStateMachine) {
+                listeningState()
             }
 
-            ///////////////
-            // connected //
-            ///////////////
-            addState(ViewerAppStates.Connected) {
-                onEntry { scope ->
-                    if (!component.androidAppLogEnabled.value) {
-                        component.setStateMessage("state Connected: désactivation demandée".toStateMessage())
-                        machine.processEvent(AppEvent.Disable)
-                        return@onEntry
-                    }
-
-                    val socket = scope.transition.argument as? Socket
-                    if (socket != null) {
-                        deviceAPI.readClientLines(socket) { line ->
-                            try {
-                                val event = Gson().fromJson(line, RichLog::class.java)
-                                println("state Connecté: reçu log (brut=${event.raw()})")
-                                //component.emit(event)
-                            } catch (ex: Exception) {
-                                println("state Connecté: erreur lors parsing de : $line")
-                                component.setStateMessage("erreur lors parsing".toStateMessage())
-                            }
-                        }
-                    }
-
-                    component.setStateMessage("déconnexion initiée par le correspondant".toStateMessage())
-                    machine.processEvent(AppEvent.Disconnect)
-                }
-                onExit { }
-
-                transition<AppEvent.Disconnect> {
-                    targetState = ViewerAppStates.Disconnected
-                    onTriggered { scope ->
-                        val socket = scope.transition.argument as? Socket
-                        socket?.close()
-                    }
-                }
-
-                transition<AppEvent.Disable> {
-                    targetState = ViewerAppStates.Disabled
-                    onTriggered { scope ->
-                        println("transition Disable")
-                    }
-                }
+            with<BuildingStateMachine, Unit>(this@createStateMachine) {
+                connectedState()
             }
 
-            addState(ViewerAppStates.Error) {
-                onEntry { scope ->
-                    if (!component.androidAppLogEnabled.value) {
-                        component.setStateMessage("state Error: désactivation demandée".toStateMessage())
-                        machine.processEvent(AppEvent.Disable)
-                        return@onEntry
-                    }
-
-                    val message = scope.transition.argument as? ErrorMessage
-                    if (message != null)
-                        component.setStateMessage(message.toStateMessage())
-                }
-                onExit { }
-
-                //manuel
-                transition<AppEvent.Disconnect> {
-                    targetState = ViewerAppStates.Disconnected
-                    onTriggered { scope ->
-                    }
-                }
-
-                transition<AppEvent.Disable> {
-                    targetState = ViewerAppStates.Disabled
-                    onTriggered { scope ->
-                        println("transition Disable")
-                    }
-                }
+            with<BuildingStateMachine, Unit>(this@createStateMachine) {
+                errorState()
             }
 
-            addState(ViewerAppStates.Disabled) {
-                onEntry { scope ->
-                    val sc = CoroutineScope(Dispatchers.Default + SupervisorJob())
-                    sc.launch {
-                        while (true) {
-                            if (component.androidAppLogEnabled.value) {
-                                machine.processEvent(AppEvent.Disconnect)
-                                return@launch
-                            }
-
-                            delay(500)
-                        }
-                    }
-                }
-
-                onExit { }
-
-                transition<AppEvent.Disconnect> {
-                    targetState = ViewerAppStates.Disconnected
-                    onTriggered { scope ->
-                        println("transition Disconnect")
-                    }
-                }
+            with<BuildingStateMachine, Unit>(this@createStateMachine) {
+                disabledState()
             }
         }
 
         return machine
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    //////////////////
+    // disconnected //
+    //////////////////
+    context(scope : BuildingStateMachine)
+    private suspend fun disconnectedState() = with(scope) {
+        addInitialState(ViewerAppStates.Disconnected) {
+            onEntry { scope ->
+                if (component.androidAppLogEnabled.value) {
+                    val result = deviceAPI.reverseAdbPort()
+                    result.fold(
+                        ifLeft = { error ->
+                            component.setStateMessage("reverseAdb en erreur".toStateMessage())
+                            println("state Disconnected: reverseAdb en erreur")
+                            machine.processEvent(AppEvent.GoOnError(error.toErrorMessage()))
+                        },
+                        ifRight = {
+                            val result2 = serverSocket()
+                            result2.fold(
+                                ifLeft = { error ->
+                                    println("state Disconnected: serverSocket pas obtenu")
+                                    component.setStateMessage("serverSocket pas obtenu".toStateMessage())
+                                    machine.processEvent(AppEvent.GoOnError(error.toErrorMessage()))
+                                },
+                                ifRight = { seso ->
+                                    println("state Disconnected: serverSocket obtenu")
+                                    component.setStateMessage("serverSocket obtenu".toStateMessage())
+                                    serverSocket = Some(seso)
+
+                                    machine.processEvent(AppEvent.StartListening(seso))
+                                }
+                            )
+                        }
+                    )
+                } else {
+                    component.setStateMessage("state Disconnected: désactivation demandée".toStateMessage())
+                    machine.processEvent(AppEvent.Disable)
+                }
+            }
+            onExit { }
+
+            transition<AppEvent.StartListening> {
+                targetState = ViewerAppStates.Listening
+                onTriggered { scope ->
+                    println("transition StartListening")
+                    scope.transition.argument = scope.event.serverSocket
+                }
+            }
+
+            transition<AppEvent.GoOnError> {
+                targetState = ViewerAppStates.Error
+                onTriggered { scope ->
+                    println("transition GoOnError")
+                    scope.transition.argument = scope.event.text
+                }
+            }
+
+            transition<AppEvent.Disable> {
+                targetState = ViewerAppStates.Disabled
+                onTriggered { scope ->
+                    println("transition Disable")
+                }
+            }
+        }
+    }
+
+    ///////////////
+    // listening //
+    ///////////////
+    context(scope : BuildingStateMachine)
+    private suspend fun listeningState() = with(scope) {
+        addState(ViewerAppStates.Listening) {
+            onEntry { scope ->
+
+                if (!component.androidAppLogEnabled.value) {
+                    component.setStateMessage("state Listening: désactivation demandée".toStateMessage())
+                    machine.processEvent(AppEvent.Disable)
+                    return@onEntry
+                }
+
+                val serverSocket = scope.transition.argument as? ServerSocket
+                println("state Listening: socket: $serverSocket")
+
+                if (serverSocket != null) {
+                    val result = searchClient(serverSocket)
+                    result.fold(
+                        ifLeft = { error ->
+                            println("state Listening: erreur lors recherche client")
+                            component.setStateMessage("erreur lors recherche client".toStateMessage())
+                            machine.processEvent(AppEvent.GoOnError(error.toErrorMessage()))
+                        },
+                        ifRight = { so ->
+                            println("state Listening: client obtenu")
+                            component.setStateMessage("client obtenu".toStateMessage())
+                            machine.processEvent(AppEvent.Connect(so))
+                        }
+                    )
+                }
+            }
+            onExit { }
+
+            transition<AppEvent.Disconnect> {
+                targetState = ViewerAppStates.Disconnected
+                onTriggered { scope ->
+                    println("transition Disconnect")
+                }
+            }
+
+            transition<AppEvent.Connect> {
+                targetState = ViewerAppStates.Connected
+                onTriggered { scope ->
+                    println("transition Connect")
+                    scope.transition.argument = scope.event.socket
+                    println("transition Connect #2")
+
+                }
+            }
+
+            transition<AppEvent.GoOnError> {
+                targetState = ViewerAppStates.Error
+                onTriggered { scope ->
+                    println("transition GoOnError")
+                    scope.transition.argument = scope.event.text
+                }
+            }
+
+            transition<AppEvent.Disable> {
+                targetState = ViewerAppStates.Disabled
+                onTriggered { scope ->
+                    println("transition Disable")
+                }
+            }
+        }
+    }
+
+    ///////////////
+    // connected //
+    ///////////////
+    context(scope : BuildingStateMachine)
+    private suspend fun connectedState() = with(scope) {
+        addState(ViewerAppStates.Connected) {
+            onEntry { scope ->
+                println("state Connected: entrée dans l'état")
+                if (!component.androidAppLogEnabled.value) {
+                    component.setStateMessage("state Connected: désactivation demandée".toStateMessage())
+                    machine.processEvent(AppEvent.Disable)
+                    return@onEntry
+                }
+
+                val socket = scope.transition.argument as? Socket
+                println("state Connected: socket=$socket")
+                if (socket != null) {
+                    deviceAPI.readClientLines(socket) { line ->
+                        println("state Connected: line=$line")
+                        try {
+                            val event = Gson().fromJson(line, RichLog::class.java)
+                            println("state Connecté: reçu log (brut=${event.raw()})")
+                            withContext(Dispatchers.Main){
+                                component.emit(event)
+                                println("state Connected: log émis")
+                            }
+
+                        } catch (ex: Exception) {
+                            println("state Connecté: erreur lors parsing de : $line")
+                            component.setStateMessage("erreur lors parsing".toStateMessage())
+                        }
+                    }
+                }
+
+                component.setStateMessage("déconnexion initiée par le correspondant".toStateMessage())
+                machine.processEvent(AppEvent.Disconnect)
+            }
+            onExit { }
+
+            transition<AppEvent.Disconnect> {
+                targetState = ViewerAppStates.Disconnected
+                onTriggered { scope ->
+                    val socket = scope.transition.argument as? Socket
+                    socket?.close()
+                }
+            }
+
+            transition<AppEvent.Disable> {
+                targetState = ViewerAppStates.Disabled
+                onTriggered { scope ->
+                    println("transition Disable")
+                }
+            }
+        }
+    }
+
+    ///////////
+    // error //
+    ///////////
+    context(scope : BuildingStateMachine)
+    private suspend fun errorState() = with(scope) {
+        addState(ViewerAppStates.Error) {
+            onEntry { scope ->
+                if (!component.androidAppLogEnabled.value) {
+                    component.setStateMessage("state Error: désactivation demandée".toStateMessage())
+                    machine.processEvent(AppEvent.Disable)
+                    return@onEntry
+                }
+
+                val message = scope.transition.argument as? ErrorMessage
+                if (message != null)
+                    component.setStateMessage(message.toStateMessage())
+            }
+            onExit { }
+
+            //manuel
+            transition<AppEvent.Disconnect> {
+                targetState = ViewerAppStates.Disconnected
+                onTriggered { scope ->
+                }
+            }
+
+            transition<AppEvent.Disable> {
+                targetState = ViewerAppStates.Disabled
+                onTriggered { scope ->
+                    println("transition Disable")
+                }
+            }
+        }
+    }
+
+    //////////////
+    // disabled //
+    //////////////
+    context(scope : BuildingStateMachine)
+    private suspend fun disabledState() = with(scope) {
+        addState(ViewerAppStates.Disabled) {
+            onEntry { scope ->
+                val sc = CoroutineScope(Dispatchers.Default + SupervisorJob())
+                sc.launch {
+                    while (true) {
+                        if (component.androidAppLogEnabled.value) {
+                            machine.processEvent(AppEvent.Disconnect)
+                            return@launch
+                        }
+
+                        delay(500)
+                    }
+                }
+            }
+
+            onExit { }
+
+            transition<AppEvent.Disconnect> {
+                targetState = ViewerAppStates.Disconnected
+                onTriggered { scope ->
+                    println("transition Disconnect")
+                }
+            }
+        }
     }
 }

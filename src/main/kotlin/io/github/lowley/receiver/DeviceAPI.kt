@@ -9,8 +9,13 @@ import io.github.lowley.common.AdbError
 import io.github.lowley.common.RichLog
 import io.github.lowley.common.searchClient
 import io.github.lowley.common.serverSocket
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketException
@@ -20,6 +25,7 @@ class DeviceAPI : IDeviceAPI {
 
     private var server: ServerSocket? = null
     private var client: Socket? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun deviceLogEvents(port: Int): Either<AdbError, Flow<RichLog>> =
         either {
@@ -42,7 +48,10 @@ class DeviceAPI : IDeviceAPI {
                         withClientLines(cli).forEach { line ->
                             try {
                                 val event = Gson().fromJson(line, RichLog::class.java)
-                                emit(event)
+                                withContext(Dispatchers.Main){
+                                    emit(event)
+                                }
+
                             } catch (ex: Exception) {
                                 println("DeviceAPI: json invalide: $line")
                             }
@@ -102,6 +111,10 @@ class DeviceAPI : IDeviceAPI {
             .use { reader ->
                 for (line in reader.lineSequence()) {
                     // traite line
+                    scope.launch {
+                        onLineReceived(line)
+                    }
+
                 }
             }
     }

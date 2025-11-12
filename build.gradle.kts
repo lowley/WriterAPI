@@ -10,13 +10,13 @@ plugins {
 }
 
 group = "io.github.lowley"
-version = "1.0.3"
+version = "1.0.4"
 
 publishing {
     publications {
         create<MavenPublication>("release") {
             from(components["java"])
-            artifactId = "writer-api"   // en minuscules, style kebab-case
+            artifactId = "writer-api"
             pom { name.set("WriterAPI") }
         }
     }
@@ -26,18 +26,17 @@ publishing {
 repositories {
     mavenCentral()
     google()
-//    maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
 }
 
 dependencies {
     testImplementation(kotlin("test"))
-    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("com.google.code.gson:gson:2.11.0")
 
     ////////////////////////
     // pour @Serializable //
     ////////////////////////
     //1.7.3
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
     ////////////////////
     // pour Flow<xxx> //
@@ -62,8 +61,9 @@ dependencies {
     ////////////////
     // reflection //
     ////////////////
-    implementation("org.jetbrains.kotlin:kotlin-stdlib:2.2.21")
-    implementation("org.jetbrains.kotlin:kotlin-reflect:2.2.21")
+    implementation(platform("org.jetbrains.kotlin:kotlin-bom:2.2.21"))
+    implementation("org.jetbrains.kotlin:kotlin-stdlib")
+    implementation("org.jetbrains.kotlin:kotlin-reflect")
 
     ///////////////////
     // state machine //
@@ -83,10 +83,14 @@ kotlin {
     jvmToolchain(17)
 }
 
+//val compileKotlin: KotlinCompile by tasks
+//compileKotlin.compilerOptions {
+//    jvmTarget.set(JvmTarget.JVM_17)
+//    freeCompilerArgs.set(listOf(
+//        "-Xnested-type-aliases"
+//    ))
+//}
 val compileKotlin: KotlinCompile by tasks
 compileKotlin.compilerOptions {
-    jvmTarget.set(JvmTarget.JVM_17)
-    freeCompilerArgs.set(listOf(
-        "-Xnested-type-aliases"
-    ))
+    freeCompilerArgs.set(listOf("-Xcontext-parameters"))
 }

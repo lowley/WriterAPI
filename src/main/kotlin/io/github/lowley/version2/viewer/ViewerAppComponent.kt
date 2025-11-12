@@ -2,13 +2,19 @@ package io.github.lowley.version2.viewer
 
 import io.github.lowley.common.RichLog
 import io.github.lowley.version2.common.StateMessage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-class ViewerAppComponent: IViewerAppComponent {
+object ViewerAppComponent: IViewerAppComponent {
+
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     //////////////////////////////////////
     // message d'état affiché dans l'UI //
@@ -37,6 +43,12 @@ class ViewerAppComponent: IViewerAppComponent {
         replay = 0,
         extraBufferCapacity = 64
     )
+
+    override fun emit(log: RichLog){
+        scope.launch(Dispatchers.Main) {
+            _logs.emit(log)
+        }
+    }
 
     // 2) Vue en lecture seule pour l’extérieur
     override val logs = _logs.asSharedFlow()

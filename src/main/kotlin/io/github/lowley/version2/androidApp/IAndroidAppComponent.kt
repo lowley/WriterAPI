@@ -30,5 +30,9 @@ interface IAndroidAppComponent {
     ////////////////////////
     val logs: SharedFlow<RichLog>
     suspend fun emit(log: RichLog)
+
+
+
+
 }
 

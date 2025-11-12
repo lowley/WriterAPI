@@ -46,6 +46,7 @@ object AutomaticallyLaunchAdbComManager {
     }
 }
 
+
 class AdbComManager(
     val component: IAndroidAppComponent,
     val deviceAPI: IDeviceAPI

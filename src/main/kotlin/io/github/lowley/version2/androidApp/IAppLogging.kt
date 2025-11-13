@@ -6,14 +6,13 @@ import io.github.lowley.version2.common.StateMessage
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
-interface IAppComponent {
+interface IAppLogging {
     object Success
 
     //////////////////////////
     // démarrage du service //
     //////////////////////////
     fun ensureMachineStarted()
-
 
     ////////////////////////
     // envoi d'un message //

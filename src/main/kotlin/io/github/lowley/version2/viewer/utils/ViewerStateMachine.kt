@@ -12,7 +12,7 @@ import io.github.lowley.version2.common.AppEvent
 import io.github.lowley.version2.common.ErrorMessage
 import io.github.lowley.version2.common.toErrorMessage
 import io.github.lowley.version2.common.toStateMessage
-import io.github.lowley.version2.viewer.ViewerAppComponent
+import io.github.lowley.version2.viewer.ViewerLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -34,8 +34,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import ru.nsk.kstatemachine.statemachine.BuildingStateMachine
 
-class ViewerStateMachineManager(
-    val component: ViewerAppComponent,
+internal class ViewerStateMachineManager(
+    val component: ViewerLogging,
     val deviceAPI: IDeviceAPI
 ) {
 
@@ -341,7 +341,7 @@ class ViewerStateMachineManager(
     }
 }
 
-sealed class ViewerAppStates : DefaultState() {
+internal sealed class ViewerAppStates : DefaultState() {
     object Disabled : ViewerAppStates()
     object Disconnected : ViewerAppStates()
     object Listening : ViewerAppStates()

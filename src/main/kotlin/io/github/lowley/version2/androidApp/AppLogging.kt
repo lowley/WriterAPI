@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-class AppComponent : IAppComponent {
+class AppLogging : IAppLogging {
 
     //////////////////////////
     // démarrage du service //
@@ -31,7 +31,7 @@ class AppComponent : IAppComponent {
     /////////////////////////////////////
     // message d'info de l'état actuel //
     /////////////////////////////////////
-    private val _stateMessage = MutableStateFlow<StateMessage>(StateMessage.EMPTY)
+    private val _stateMessage = MutableStateFlow(StateMessage.EMPTY)
     override val stateMessage = _stateMessage.asStateFlow()
 
     override fun setStateMessage(stateMessage: StateMessage) {
@@ -48,7 +48,7 @@ class AppComponent : IAppComponent {
 
     /**
      * Méthode interne pour envoyer les ServerMessages reçus vers "message" qui est lu par l'app
-     * @see AppComponent.logs
+     * @see AppLogging.logs
       */
     // voir [[plogs]]
     suspend fun resendToApp(log: ServerMessage) {

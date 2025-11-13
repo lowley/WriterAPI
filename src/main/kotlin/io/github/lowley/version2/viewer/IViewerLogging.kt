@@ -6,7 +6,7 @@ import io.github.lowley.version2.common.StateMessage
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
-interface IViewerAppComponent {
+interface IViewerLogging {
     object Success
 
     //////////////////////////

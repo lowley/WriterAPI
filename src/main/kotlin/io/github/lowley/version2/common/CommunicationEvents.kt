@@ -7,7 +7,7 @@ import java.net.Socket
 
 interface WEvent: Event
 
-sealed class AppEvent(){
+internal sealed class AppEvent(){
     data class StartListening(val serverSocket: ServerSocket): Event, AppEvent()
     object Disconnect : Event, AppEvent()
     data class Connect(val socket: Socket) : Event, AppEvent()
@@ -21,7 +21,7 @@ value class ErrorMessage(val text: String){
     fun toStateMessage(): StateMessage = StateMessage(text)
 }
 
-fun AdbError.toErrorMessage(): ErrorMessage = ErrorMessage(
+internal fun AdbError.toErrorMessage(): ErrorMessage = ErrorMessage(
     when (this){
         is AdbError.ExceptionThrown -> this.throwable.message
         is AdbError.CommandFailed -> this.output

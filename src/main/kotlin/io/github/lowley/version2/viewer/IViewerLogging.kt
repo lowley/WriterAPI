@@ -12,7 +12,7 @@ interface IViewerLogging {
     //////////////////////////
     // démarrage du service //
     //////////////////////////
-    fun ensureMachineStarted()
+    fun startService()
 
     /////////////////////////////////////
     // message d'info de l'état actuel //

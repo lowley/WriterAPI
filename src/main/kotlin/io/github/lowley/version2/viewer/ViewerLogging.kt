@@ -20,7 +20,7 @@ object ViewerLogging : IViewerLogging {
     //////////////////////////
     // Démarrage du service //
     //////////////////////////
-    override fun ensureMachineStarted() {
+    override fun startService() {
         InitializeViewerLogging
     }
 

@@ -10,12 +10,12 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-class AppLogging : IAppLogging {
+object AppLogging : IAppLogging {
 
     //////////////////////////
     // démarrage du service //
     //////////////////////////
-    override fun ensureMachineStarted() {
+    override fun startService() {
         InitializeAppLogging
     }
 

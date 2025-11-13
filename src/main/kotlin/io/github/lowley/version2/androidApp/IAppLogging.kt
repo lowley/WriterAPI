@@ -12,7 +12,7 @@ interface IAppLogging {
     //////////////////////////
     // démarrage du service //
     //////////////////////////
-    fun ensureMachineStarted()
+    fun startService()
 
     ////////////////////////
     // envoi d'un message //

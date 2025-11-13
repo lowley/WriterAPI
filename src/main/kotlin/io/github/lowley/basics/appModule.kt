@@ -13,15 +13,21 @@ import io.github.lowley.version2.viewer.IViewerLogging
 import io.github.lowley.version2.viewer.ViewerLogging
 
 import org.koin.dsl.module
+import io.github.lowley.version2.androidApp.utils.AppStateMachineManager
+import io.github.lowley.version2.viewer.utils.ViewerStateMachineManager
 
 val appModule = module {
     single<IParser> { Parser() }
     single<ILoggerCommunicationAPI> { LoggerCommunicationAPI() }
     single { LogBuilder(get(), get()) }
     single<IDeviceAPI> { DeviceAPI() }
-    single<IAppLogging> { AppLogging() }
+
+    single<IAppLogging> { AppLogging }
+    single<AppLogging> { AppLogging }
+
     single<IViewerLogging> { ViewerLogging }
     single<ViewerLogging> { ViewerLogging }
-    single {  io.github.lowley.version2.androidApp.utils.AppStateMachineManager(get(), get()) }
-    single {  io.github.lowley.version2.viewer.utils.ViewerStateMachineManager(get(), get()) }
+
+    single {  AppStateMachineManager(get(), get()) }
+    single {  ViewerStateMachineManager(get(), get()) }
 }

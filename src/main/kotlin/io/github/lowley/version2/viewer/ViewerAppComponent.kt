@@ -19,21 +19,29 @@ object ViewerAppComponent: IViewerAppComponent {
     //////////////////////////////////////
     // message d'état affiché dans l'UI //
     //////////////////////////////////////
-    private val _stateMessage = MutableStateFlow<StateMessage>(StateMessage.EMPTY)
-    override val stateMessage = _stateMessage.asStateFlow()
+    private val _stateMessage = MutableStateFlow(StateMessage.EMPTY)
+    override val stateMessageFlow = _stateMessage.asStateFlow()
 
-    override fun setStateMessage(stateMessage: StateMessage) {
+    override fun emitStateMessage(stateMessage: StateMessage) {
         _stateMessage.update { stateMessage }
     }
 
     //////////////////////////////////
     // activation des logs de l'app //
     //////////////////////////////////
-    private val _androidAppLogEnabled = MutableStateFlow<Boolean>(false)
-    override val androidAppLogEnabled = _androidAppLogEnabled.asStateFlow()
+    private val _isLoggingEnabledFlow = MutableStateFlow<Boolean>(false)
+    override val isLoggingEnabledFlow = _isLoggingEnabledFlow.asStateFlow()
 
-    override fun setAndroidAppLogEnabled(enabled: Boolean) {
-        _androidAppLogEnabled.update { enabled }
+    override fun enableLogs(enabled: Boolean) {
+        _isLoggingEnabledFlow.update { enabled }
+    }
+
+    override fun enableLogs() {
+        _isLoggingEnabledFlow.update { true }
+    }
+
+    override fun disableLogs() {
+        _isLoggingEnabledFlow.update { false }
     }
 
     /////////////////////////

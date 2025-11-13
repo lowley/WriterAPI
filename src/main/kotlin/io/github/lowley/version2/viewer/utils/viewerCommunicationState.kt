@@ -13,6 +13,7 @@ import io.github.lowley.version2.common.ErrorMessage
 import io.github.lowley.version2.common.toErrorMessage
 import io.github.lowley.version2.common.toStateMessage
 import io.github.lowley.version2.viewer.IViewerAppComponent
+import io.github.lowley.version2.viewer.ViewerAppComponent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -34,24 +35,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import ru.nsk.kstatemachine.statemachine.BuildingStateMachine
 
-
-sealed class ViewerAppStates : DefaultState() {
-    object Disabled : ViewerAppStates()
-    object Disconnected : ViewerAppStates()
-    object Listening : ViewerAppStates()
-    object Connected : ViewerAppStates()
-    object Error : ViewerAppStates()
-}
-
-object AutomaticallyLaunchAdbComManager {
-    private val adbComManager: AdbComManager by inject(AdbComManager::class.java)
-    init {
-        println(adbComManager.toString().substring(0,0))
-    }
-}
-
 class AdbComManager(
-    val component: IViewerAppComponent,
+    val component: ViewerAppComponent,
     val deviceAPI: IDeviceAPI
 ) {
 
@@ -104,11 +89,11 @@ class AdbComManager(
     private suspend fun disconnectedState() = with(scope) {
         addInitialState(ViewerAppStates.Disconnected) {
             onEntry { scope ->
-                if (component.androidAppLogEnabled.value) {
+                if (component.isLoggingEnabledFlow.value) {
                     val result = deviceAPI.reverseAdbPort()
                     result.fold(
                         ifLeft = { error ->
-                            component.setStateMessage("reverseAdb en erreur".toStateMessage())
+                            component.emitStateMessage("ReverseAdb en erreur".toStateMessage())
                             println("state Disconnected: reverseAdb en erreur")
                             machine.processEvent(AppEvent.GoOnError(error.toErrorMessage()))
                         },
@@ -117,12 +102,12 @@ class AdbComManager(
                             result2.fold(
                                 ifLeft = { error ->
                                     println("state Disconnected: serverSocket pas obtenu")
-                                    component.setStateMessage("serverSocket pas obtenu".toStateMessage())
+                                    component.emitStateMessage("ServerSocket pas obtenu".toStateMessage())
                                     machine.processEvent(AppEvent.GoOnError(error.toErrorMessage()))
                                 },
                                 ifRight = { seso ->
                                     println("state Disconnected: serverSocket obtenu")
-                                    component.setStateMessage("serverSocket obtenu".toStateMessage())
+                                    component.emitStateMessage("ServerSocket obtenu".toStateMessage())
                                     serverSocket = Some(seso)
 
                                     machine.processEvent(AppEvent.StartListening(seso))
@@ -131,7 +116,7 @@ class AdbComManager(
                         }
                     )
                 } else {
-                    component.setStateMessage("state Disconnected: désactivation demandée".toStateMessage())
+                    component.emitStateMessage("Désactivation demandée".toStateMessage())
                     machine.processEvent(AppEvent.Disable)
                 }
             }
@@ -170,8 +155,8 @@ class AdbComManager(
         addState(ViewerAppStates.Listening) {
             onEntry { scope ->
 
-                if (!component.androidAppLogEnabled.value) {
-                    component.setStateMessage("state Listening: désactivation demandée".toStateMessage())
+                if (!component.isLoggingEnabledFlow.value) {
+                    component.emitStateMessage("Désactivation demandée".toStateMessage())
                     machine.processEvent(AppEvent.Disable)
                     return@onEntry
                 }
@@ -184,12 +169,12 @@ class AdbComManager(
                     result.fold(
                         ifLeft = { error ->
                             println("state Listening: erreur lors recherche client")
-                            component.setStateMessage("erreur lors recherche client".toStateMessage())
+                            component.emitStateMessage("Erreur lors recherche client".toStateMessage())
                             machine.processEvent(AppEvent.GoOnError(error.toErrorMessage()))
                         },
                         ifRight = { so ->
                             println("state Listening: client obtenu")
-                            component.setStateMessage("client obtenu".toStateMessage())
+                            component.emitStateMessage("Client obtenu".toStateMessage())
                             machine.processEvent(AppEvent.Connect(so))
                         }
                     )
@@ -209,8 +194,6 @@ class AdbComManager(
                 onTriggered { scope ->
                     println("transition Connect")
                     scope.transition.argument = scope.event.socket
-                    println("transition Connect #2")
-
                 }
             }
 
@@ -238,9 +221,8 @@ class AdbComManager(
     private suspend fun connectedState() = with(scope) {
         addState(ViewerAppStates.Connected) {
             onEntry { scope ->
-                println("state Connected: entrée dans l'état")
-                if (!component.androidAppLogEnabled.value) {
-                    component.setStateMessage("state Connected: désactivation demandée".toStateMessage())
+                if (!component.isLoggingEnabledFlow.value) {
+                    component.emitStateMessage("Désactivation demandée".toStateMessage())
                     machine.processEvent(AppEvent.Disable)
                     return@onEntry
                 }
@@ -260,12 +242,11 @@ class AdbComManager(
 
                         } catch (ex: Exception) {
                             println("state Connecté: erreur lors parsing de : $line")
-                            component.setStateMessage("erreur lors parsing".toStateMessage())
                         }
                     }
                 }
 
-                component.setStateMessage("déconnexion initiée par le correspondant".toStateMessage())
+                component.emitStateMessage("Déconnexion initiée par le correspondant".toStateMessage())
                 machine.processEvent(AppEvent.Disconnect)
             }
             onExit { }
@@ -273,6 +254,7 @@ class AdbComManager(
             transition<AppEvent.Disconnect> {
                 targetState = ViewerAppStates.Disconnected
                 onTriggered { scope ->
+                    println("transition Disconnect")
                     val socket = scope.transition.argument as? Socket
                     socket?.close()
                 }
@@ -294,15 +276,15 @@ class AdbComManager(
     private suspend fun errorState() = with(scope) {
         addState(ViewerAppStates.Error) {
             onEntry { scope ->
-                if (!component.androidAppLogEnabled.value) {
-                    component.setStateMessage("state Error: désactivation demandée".toStateMessage())
+                if (!component.isLoggingEnabledFlow.value) {
+                    component.emitStateMessage("Désactivation demandée".toStateMessage())
                     machine.processEvent(AppEvent.Disable)
                     return@onEntry
                 }
 
                 val message = scope.transition.argument as? ErrorMessage
                 if (message != null)
-                    component.setStateMessage(message.toStateMessage())
+                    component.emitStateMessage("Erreur: $message".toStateMessage())
             }
             onExit { }
 
@@ -317,6 +299,12 @@ class AdbComManager(
                 targetState = ViewerAppStates.Disabled
                 onTriggered { scope ->
                     println("transition Disable")
+                    serverSocket.fold(
+                        ifEmpty = {},
+                        ifSome = { serverSocket ->
+                            serverSocket.close()
+                        }
+                    )
                 }
             }
         }
@@ -332,7 +320,7 @@ class AdbComManager(
                 val sc = CoroutineScope(Dispatchers.Default + SupervisorJob())
                 sc.launch {
                     while (true) {
-                        if (component.androidAppLogEnabled.value) {
+                        if (component.isLoggingEnabledFlow.value) {
                             machine.processEvent(AppEvent.Disconnect)
                             return@launch
                         }
@@ -353,3 +341,19 @@ class AdbComManager(
         }
     }
 }
+
+sealed class ViewerAppStates : DefaultState() {
+    object Disabled : ViewerAppStates()
+    object Disconnected : ViewerAppStates()
+    object Listening : ViewerAppStates()
+    object Connected : ViewerAppStates()
+    object Error : ViewerAppStates()
+}
+
+object AutomaticallyLaunchAdbComManager {
+    private val adbComManager: AdbComManager by inject(AdbComManager::class.java)
+    init {
+        println(adbComManager.toString().substring(0,0))
+    }
+}
+

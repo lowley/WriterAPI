@@ -21,6 +21,7 @@ val appModule = module {
     single<IDeviceAPI> { DeviceAPI() }
     single<IAndroidAppComponent> { AndroidAppComponent() }
     single<IViewerAppComponent> { ViewerAppComponent }
+    single<ViewerAppComponent> { ViewerAppComponent }
     single {  io.github.lowley.version2.androidApp.utils.AdbComManager(get(), get()) }
     single {  io.github.lowley.version2.viewer.utils.AdbComManager(get(), get()) }
 }

@@ -11,19 +11,20 @@ interface IViewerAppComponent {
     /////////////////////////////////////
     // message d'info de l'état actuel //
     /////////////////////////////////////
-    val stateMessage: StateFlow<StateMessage>
-    fun setStateMessage(stateMessage: StateMessage)
+    val stateMessageFlow: StateFlow<StateMessage>
+    fun emitStateMessage(stateMessage: StateMessage)
 
     ////////////////////////////////
     // interrupteur de la machine //
     ////////////////////////////////
-    val androidAppLogEnabled: StateFlow<Boolean>
-    fun setAndroidAppLogEnabled(enabled: Boolean)
+    val isLoggingEnabledFlow: StateFlow<Boolean>
+    fun enableLogs(enabled: Boolean)
+    fun disableLogs()
+    fun enableLogs()
 
     /////////////////////////
     // flux des logs reçus //
     /////////////////////////
     val logs: SharedFlow<RichLog>
-    fun emit(log: RichLog)
 }
 

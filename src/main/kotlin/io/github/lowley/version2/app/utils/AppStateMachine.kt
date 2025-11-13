@@ -1,4 +1,4 @@
-package io.github.lowley.version2.androidApp.utils
+package io.github.lowley.version2.app.utils
 
 import arrow.core.None
 import arrow.core.Option
@@ -8,7 +8,7 @@ import io.github.lowley.common.RichLog
 import io.github.lowley.common.searchClient
 import io.github.lowley.common.serverSocket
 import io.github.lowley.receiver.IDeviceAPI
-import io.github.lowley.version2.androidApp.IAppLogging
+import io.github.lowley.version2.app.IAppLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -31,7 +31,7 @@ import io.github.lowley.version2.common.ErrorMessage
 import io.github.lowley.version2.common.toErrorMessage
 import io.github.lowley.version2.common.toStateMessage
 import io.github.lowley.version2.viewer.utils.ViewerStateMachineManager
-import io.github.lowley.version2.androidApp.utils.AndroidAppStates.*
+import io.github.lowley.version2.app.utils.AndroidAppStates.*
 import io.github.lowley.version2.common.AppEvent
 import io.github.lowley.version2.viewer.utils.ViewerAppStates
 import kotlinx.coroutines.delay

@@ -1,8 +1,8 @@
-package io.github.lowley.version2.androidApp
+package io.github.lowley.version2.app
 
 import io.github.lowley.common.RichLog
 import io.github.lowley.common.ServerMessage
-import io.github.lowley.version2.androidApp.utils.InitializeAppLogging
+import io.github.lowley.version2.app.utils.InitializeAppLogging
 import io.github.lowley.version2.common.StateMessage
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow

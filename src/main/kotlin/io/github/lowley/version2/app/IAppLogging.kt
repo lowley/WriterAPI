@@ -1,4 +1,4 @@
-package io.github.lowley.version2.androidApp
+package io.github.lowley.version2.app
 
 import io.github.lowley.common.RichLog
 import io.github.lowley.common.ServerMessage

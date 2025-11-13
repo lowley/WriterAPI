@@ -12,7 +12,6 @@ import io.github.lowley.version2.common.AppEvent
 import io.github.lowley.version2.common.ErrorMessage
 import io.github.lowley.version2.common.toErrorMessage
 import io.github.lowley.version2.common.toStateMessage
-import io.github.lowley.version2.viewer.IViewerAppComponent
 import io.github.lowley.version2.viewer.ViewerAppComponent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +34,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import ru.nsk.kstatemachine.statemachine.BuildingStateMachine
 
-class AdbComManager(
+class ViewerStateMachineManager(
     val component: ViewerAppComponent,
     val deviceAPI: IDeviceAPI
 ) {
@@ -93,7 +92,7 @@ class AdbComManager(
                     val result = deviceAPI.reverseAdbPort()
                     result.fold(
                         ifLeft = { error ->
-                            component.emitStateMessage("ReverseAdb en erreur".toStateMessage())
+                            component.sendStateMessageToViewer("ReverseAdb en erreur".toStateMessage())
                             println("state Disconnected: reverseAdb en erreur")
                             machine.processEvent(AppEvent.GoOnError(error.toErrorMessage()))
                         },
@@ -102,12 +101,12 @@ class AdbComManager(
                             result2.fold(
                                 ifLeft = { error ->
                                     println("state Disconnected: serverSocket pas obtenu")
-                                    component.emitStateMessage("ServerSocket pas obtenu".toStateMessage())
+                                    component.sendStateMessageToViewer("ServerSocket pas obtenu".toStateMessage())
                                     machine.processEvent(AppEvent.GoOnError(error.toErrorMessage()))
                                 },
                                 ifRight = { seso ->
                                     println("state Disconnected: serverSocket obtenu")
-                                    component.emitStateMessage("ServerSocket obtenu".toStateMessage())
+                                    component.sendStateMessageToViewer("ServerSocket obtenu".toStateMessage())
                                     serverSocket = Some(seso)
 
                                     machine.processEvent(AppEvent.StartListening(seso))
@@ -116,7 +115,7 @@ class AdbComManager(
                         }
                     )
                 } else {
-                    component.emitStateMessage("Désactivation demandée".toStateMessage())
+                    component.sendStateMessageToViewer("Désactivation demandée".toStateMessage())
                     machine.processEvent(AppEvent.Disable)
                 }
             }
@@ -156,7 +155,7 @@ class AdbComManager(
             onEntry { scope ->
 
                 if (!component.isLoggingEnabledFlow.value) {
-                    component.emitStateMessage("Désactivation demandée".toStateMessage())
+                    component.sendStateMessageToViewer("Désactivation demandée".toStateMessage())
                     machine.processEvent(AppEvent.Disable)
                     return@onEntry
                 }
@@ -169,12 +168,12 @@ class AdbComManager(
                     result.fold(
                         ifLeft = { error ->
                             println("state Listening: erreur lors recherche client")
-                            component.emitStateMessage("Erreur lors recherche client".toStateMessage())
+                            component.sendStateMessageToViewer("Erreur lors recherche client".toStateMessage())
                             machine.processEvent(AppEvent.GoOnError(error.toErrorMessage()))
                         },
                         ifRight = { so ->
                             println("state Listening: client obtenu")
-                            component.emitStateMessage("Client obtenu".toStateMessage())
+                            component.sendStateMessageToViewer("Client obtenu".toStateMessage())
                             machine.processEvent(AppEvent.Connect(so))
                         }
                     )
@@ -222,7 +221,7 @@ class AdbComManager(
         addState(ViewerAppStates.Connected) {
             onEntry { scope ->
                 if (!component.isLoggingEnabledFlow.value) {
-                    component.emitStateMessage("Désactivation demandée".toStateMessage())
+                    component.sendStateMessageToViewer("Désactivation demandée".toStateMessage())
                     machine.processEvent(AppEvent.Disable)
                     return@onEntry
                 }
@@ -246,7 +245,7 @@ class AdbComManager(
                     }
                 }
 
-                component.emitStateMessage("Déconnexion initiée par le correspondant".toStateMessage())
+                component.sendStateMessageToViewer("Déconnexion initiée par le correspondant".toStateMessage())
                 machine.processEvent(AppEvent.Disconnect)
             }
             onExit { }
@@ -277,14 +276,14 @@ class AdbComManager(
         addState(ViewerAppStates.Error) {
             onEntry { scope ->
                 if (!component.isLoggingEnabledFlow.value) {
-                    component.emitStateMessage("Désactivation demandée".toStateMessage())
+                    component.sendStateMessageToViewer("Désactivation demandée".toStateMessage())
                     machine.processEvent(AppEvent.Disable)
                     return@onEntry
                 }
 
                 val message = scope.transition.argument as? ErrorMessage
                 if (message != null)
-                    component.emitStateMessage("Erreur: $message".toStateMessage())
+                    component.sendStateMessageToViewer("Erreur: $message".toStateMessage())
             }
             onExit { }
 
@@ -350,10 +349,10 @@ sealed class ViewerAppStates : DefaultState() {
     object Error : ViewerAppStates()
 }
 
-object AutomaticallyLaunchAdbComManager {
-    private val adbComManager: AdbComManager by inject(AdbComManager::class.java)
+internal object InitializeViewerLogging {
+    private val stateMachine: ViewerStateMachineManager by inject(ViewerStateMachineManager::class.java)
     init {
-        println(adbComManager.toString().substring(0,0))
+        println(stateMachine.toString().substring(0,0))
     }
 }
 

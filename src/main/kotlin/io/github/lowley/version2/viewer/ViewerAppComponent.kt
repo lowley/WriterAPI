@@ -1,7 +1,9 @@
 package io.github.lowley.version2.viewer
 
 import io.github.lowley.common.RichLog
+import io.github.lowley.common.ServerMessage
 import io.github.lowley.version2.common.StateMessage
+import io.github.lowley.version2.viewer.utils.InitializeViewerLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -12,18 +14,26 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-object ViewerAppComponent: IViewerAppComponent {
+object ViewerAppComponent : IViewerAppComponent {
 
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    //////////////////////////////////////
-    // message d'état affiché dans l'UI //
-    //////////////////////////////////////
-    private val _stateMessage = MutableStateFlow(StateMessage.EMPTY)
-    override val stateMessageFlow = _stateMessage.asStateFlow()
+    //////////////////////////
+    // Démarrage du service //
+    //////////////////////////
+    override fun ensureMachineStarted() {
+        InitializeViewerLogging
+    }
 
-    override fun emitStateMessage(stateMessage: StateMessage) {
-        _stateMessage.update { stateMessage }
+    /////////////////////////////////////
+    // message d'info de l'état actuel //
+    /////////////////////////////////////
+    private val _stateMessageFlow = MutableStateFlow(StateMessage.EMPTY)
+
+    override val stateMessageFlow = _stateMessageFlow.asStateFlow()
+
+    override fun sendStateMessageToViewer(stateMessage: StateMessage) {
+        _stateMessageFlow.update { stateMessage }
     }
 
     //////////////////////////////////
@@ -52,14 +62,12 @@ object ViewerAppComponent: IViewerAppComponent {
         extraBufferCapacity = 64
     )
 
-    override fun emit(log: RichLog){
-        scope.launch(Dispatchers.Main) {
-            _logs.emit(log)
-        }
+    override val logFlow = _logs.asSharedFlow()
+
+    //////////////////////////////////////////////
+    // envoi d'un ServerMessage à l'app Android //
+    //////////////////////////////////////////////
+    override fun emit(message: ServerMessage) {
+        //TODO compléter
     }
-
-    // 2) Vue en lecture seule pour l’extérieur
-    override val logs = _logs.asSharedFlow()
-
-
 }

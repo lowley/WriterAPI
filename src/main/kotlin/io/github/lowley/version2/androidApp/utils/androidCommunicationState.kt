@@ -8,7 +8,7 @@ import io.github.lowley.common.RichLog
 import io.github.lowley.common.searchClient
 import io.github.lowley.common.serverSocket
 import io.github.lowley.receiver.IDeviceAPI
-import io.github.lowley.version2.androidApp.IAndroidAppComponent
+import io.github.lowley.version2.androidApp.IAppComponent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -31,6 +31,7 @@ import io.github.lowley.version2.androidApp.utils.AndroidAppStates.*
 import io.github.lowley.version2.common.ErrorMessage
 import io.github.lowley.version2.common.toErrorMessage
 import io.github.lowley.version2.common.toStateMessage
+import io.github.lowley.version2.viewer.utils.ViewerStateMachineManager
 
 
 sealed class AndroidAppStates : DefaultState() {
@@ -40,15 +41,8 @@ sealed class AndroidAppStates : DefaultState() {
     object Error : AndroidAppStates()
 }
 
-object AutomaticallyLaunchAdbComManager {
-    init {
-        val adbComManager by inject<AdbComManager>(AdbComManager::class.java)
-    }
-}
-
-
-class AdbComManager(
-    val component: IAndroidAppComponent,
+class AppStateMachineManager(
+    val component: IAppComponent,
     val deviceAPI: IDeviceAPI
 ) {
 
@@ -223,3 +217,9 @@ class AdbComManager(
 
 }
 
+internal object InitializeAppLogging {
+    private val stateMachine: ViewerStateMachineManager by inject(ViewerStateMachineManager::class.java)
+    init {
+        println(stateMachine.toString().substring(0,0))
+    }
+}

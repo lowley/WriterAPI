@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
 interface IViewerLogging {
-    object Success
 
     //////////////////////////
     // démarrage du service //

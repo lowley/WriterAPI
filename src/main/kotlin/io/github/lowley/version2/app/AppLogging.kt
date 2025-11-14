@@ -2,13 +2,14 @@ package io.github.lowley.version2.app
 
 import io.github.lowley.common.RichLog
 import io.github.lowley.common.ServerMessage
-import io.github.lowley.version2.app.utils.InitializeAppLogging
 import io.github.lowley.version2.common.StateMessage
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import io.github.lowley.version2.app.utils.AppStateMachineManager.InitializeAppLogging
 
 object AppLogging : IAppLogging {
 
@@ -22,11 +23,15 @@ object AppLogging : IAppLogging {
     ////////////////////////
     // envoi d'un messgae //
     ////////////////////////
-    override suspend fun sendLogToServer(richLog: RichLog) {
+    /**
+     * c'est envoyé par la StateMachine, quand elle se trouvera en état Connected
+     */
+    internal val logsToBeSentToViewer = Channel<RichLog>(capacity = Channel.BUFFERED)
 
-
+    // voir [[RichLog.addToLogsToBeSentToViewer]]
+    override fun sendLogToAPI(log: RichLog) {
+        logsToBeSentToViewer.trySend(log)
     }
-
 
     /////////////////////////////////////
     // message d'info de l'état actuel //
@@ -51,10 +56,15 @@ object AppLogging : IAppLogging {
      * @see AppLogging.logs
       */
     // voir [[plogs]]
-    suspend fun resendToApp(log: ServerMessage) {
+    internal suspend fun sendMessageToApp(log: ServerMessage) {
         _messages.emit(log)
     }
 
 
+}
+
+// #[[RichLog.addToLogsToBeSentToViewer]]
+fun RichLog.addToLogsToBeSentToViewer() {
+    AppLogging.sendLogToAPI(this)
 }
 

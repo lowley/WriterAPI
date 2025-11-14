@@ -8,7 +8,7 @@ import java.net.Socket
 interface WEvent: Event
 
 internal sealed class AppEvent(){
-    data class StartListening(val serverSocket: ServerSocket): Event, AppEvent()
+    object Listen: Event, AppEvent()
     object Disconnect : Event, AppEvent()
     data class Connect(val socket: Socket) : Event, AppEvent()
     data class GoOnError(val text: ErrorMessage) : Event, AppEvent()
@@ -28,3 +28,5 @@ internal fun AdbError.toErrorMessage(): ErrorMessage = ErrorMessage(
 
     } ?: "erreur inconnue"
 )
+
+internal fun String.toErrorMessage(): ErrorMessage = ErrorMessage(this)

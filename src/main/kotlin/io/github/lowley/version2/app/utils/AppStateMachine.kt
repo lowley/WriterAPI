@@ -1,14 +1,24 @@
 package io.github.lowley.version2.app.utils
 
+import arrow.core.Either
 import arrow.core.None
 import arrow.core.Option
 import arrow.core.Some
+import arrow.core.raise.either
+import arrow.core.right
 import com.google.gson.Gson
+import io.github.lowley.common.AdbError
 import io.github.lowley.common.RichLog
+import io.github.lowley.common.RichSegment
+import io.github.lowley.common.RichText
+import io.github.lowley.common.ServerMessage
+import io.github.lowley.common.Style
+import io.github.lowley.common.TextType
 import io.github.lowley.common.searchClient
 import io.github.lowley.common.serverSocket
+import io.github.lowley.common.socket
 import io.github.lowley.receiver.IDeviceAPI
-import io.github.lowley.version2.app.IAppLogging
+import io.github.lowley.version2.app.AppLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -31,14 +41,21 @@ import io.github.lowley.version2.common.ErrorMessage
 import io.github.lowley.version2.common.toErrorMessage
 import io.github.lowley.version2.common.toStateMessage
 import io.github.lowley.version2.viewer.utils.ViewerStateMachineManager
-import io.github.lowley.version2.app.utils.AndroidAppStates.*
+import io.github.lowley.version2.app.utils.AppStateMachineManager.AndroidAppStates.*
 import io.github.lowley.version2.common.AppEvent
+import io.github.lowley.version2.common.NetworkBehavior
+import io.github.lowley.version2.common.Success
 import io.github.lowley.version2.viewer.utils.ViewerAppStates
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import ru.nsk.kstatemachine.statemachine.BuildingStateMachine
+import java.io.BufferedWriter
+import java.util.Calendar
+import kotlinx.coroutines.CancellationException
 
 internal class AppStateMachineManager(
-    val component: IAppLogging,
+    val component: AppLogging,
     val deviceAPI: IDeviceAPI
 ) {
 
@@ -70,11 +87,6 @@ internal class AppStateMachineManager(
             with<BuildingStateMachine, Unit>(this@createStateMachine) {
                 errorState()
             }
-
-            with<BuildingStateMachine, Unit>(this@createStateMachine) {
-                disabledState()
-            }
-
         }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -84,13 +96,12 @@ internal class AppStateMachineManager(
     //////////////////
     context(scope: BuildingStateMachine)
     private suspend fun disconnectedState() = with(scope) {
-        addInitialState(Disconnected)
+        addInitialState(AppStateMachineManager.AndroidAppStates.Disconnected)
         {
             onEntry { scope ->
                 val result = deviceAPI.reverseAdbPort()
                 result.fold(
                     ifLeft = { error ->
-                        component.setStateMessage("reverseAdb en erreur".toStateMessage())
                         println("state Disconnected: reverseAdb en erreur")
                         machine.processEvent(GoOnError(error.toErrorMessage()))
                     },
@@ -99,7 +110,6 @@ internal class AppStateMachineManager(
                         result2.fold(
                             ifLeft = { error ->
                                 println("state Disconnected: serverSocket pas obtenu")
-                                component.setStateMessage("serverSocket pas obtenu".toStateMessage())
                                 machine.processEvent(GoOnError(error.toErrorMessage()))
                             },
                             ifRight = { seso ->
@@ -107,7 +117,7 @@ internal class AppStateMachineManager(
                                 component.setStateMessage("serverSocket obtenu".toStateMessage())
                                 serverSocket = Some(seso)
 
-                                machine.processEvent(StartListening(seso))
+                                machine.processEvent(Listen)
                             }
                         )
                     }
@@ -117,12 +127,11 @@ internal class AppStateMachineManager(
 
             onExit() {}
 
-            transition<StartListening>
+            transition<Listen>
             {
                 targetState = Listening
                 onTriggered { scope ->
                     println("transition StartListening")
-                    scope.transition.argument = scope.event.serverSocket
                 }
             }
 
@@ -145,34 +154,31 @@ internal class AppStateMachineManager(
         addState(Listening)
         {
             onEntry { scope ->
-                val serverSocket = scope.transition.argument as? ServerSocket
                 println("state Listening: socket: $serverSocket")
 
-                if (serverSocket != null) {
-                    val result = searchClient(serverSocket)
-                    result.fold(
-                        ifLeft = { error ->
-                            println("state Listening: erreur lors recherche client")
-                            component.setStateMessage("erreur lors recherche client".toStateMessage())
-                            machine.processEvent(GoOnError(error.toErrorMessage()))
-                        },
-                        ifRight = { so ->
-                            println("state Listening: client obtenu")
-                            component.setStateMessage("client obtenu".toStateMessage())
-                            machine.processEvent(Connect(so))
-                        }
-                    )
-                }
+                serverSocket.fold(
+                    ifSome = { serverSocket ->
+                        val result = searchClient(serverSocket)
+                        result.fold(
+                            ifLeft = { error ->
+                                println("state Listening: erreur lors recherche client")
+                                machine.processEvent(GoOnError(error.toErrorMessage()))
+                            },
+                            ifRight = { so ->
+                                println("state Listening: client obtenu")
+                                component.setStateMessage("client obtenu".toStateMessage())
+                                machine.processEvent(Connect(so))
+                            }
+                        )
+                    },
+                    ifEmpty = {
+                        println("state Listening: erreur lors recherche client")
+                        machine.processEvent(GoOnError("erreur lors recherche client".toErrorMessage()))
+                    }
+                )
             }
 
             onExit { }
-
-            transition<Disconnect> {
-                targetState = Disconnected
-                onTriggered { scope ->
-                    println("transition Disconnect")
-                }
-            }
 
             transition<Connect> {
                 targetState = Connected
@@ -197,28 +203,57 @@ internal class AppStateMachineManager(
     ///////////////
     context(scope: BuildingStateMachine)
     private suspend fun connectedState() = with(scope) {
+
+        val coroutineJob = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
         addState(Connected)
         {
             onEntry { scope ->
 
-                //il ne doit pas recevoir mais émettre
-                val socket = scope.transition.argument as? Socket
-                if (socket != null) {
-                    deviceAPI.readClientLines(socket) { line ->
-                        try {
-                            val event = Gson().fromJson(line, RichLog::class.java)
-                            println("state Connecté: reçu log (brut=${event.raw()})")
-                            component.emit(event)
-                        } catch (ex: Exception) {
-                            println("state Connecté: erreur lors parsing de : $line")
-                            component.setStateMessage("erreur lors parsing".toStateMessage())
+                val socket = (scope.transition.argument as? Socket)
+                if (socket == null) {
+                    println("state Connected: socket reçue vide")
+                    machine.processEvent(GoOnError("erreur interne de socket".toErrorMessage()))
+                }
+
+                var emitterJob = with(coroutineJob) { createEmitterJob(socket!!) }
+                var receiverJob = with(coroutineJob) { createReceiverJob(socket!!) }
+
+                ////////////////////////////////
+                // gestion emitter & receiver //
+                ////////////////////////////////
+
+                try {
+                    emitterJob.start()
+                    receiverJob.start()
+                } catch (ex: CancellationException) {
+                    when (ex.message) {
+                        NetworkBehavior.Emitter.name -> {
+                            try {
+                                socket?.close()
+                            } catch (_: Exception) {
+                            }
+                            println("state Connected: erreur d'émission")
+                            component.setStateMessage("erreur d'émission de log".toStateMessage())
+                            machine.processEvent(Listen)
+                        }
+
+                        NetworkBehavior.Receiver.name -> {
+                            try {
+                                socket?.close()
+                            } catch (_: Exception) {
+                            }
+                            println("state Connected: erreur de réception")
+                            component.setStateMessage("erreur de réception de message du Viewer".toStateMessage())
+                            machine.processEvent(Listen)
                         }
                     }
                 }
 
-                component.setStateMessage("déconnexion initiée par le correspondant".toStateMessage())
-                machine.processEvent(Disconnect)
+//                component.setStateMessage("déconnexion initiée par le correspondant".toStateMessage())
+//                machine.processEvent(Disconnect)
             }
+
 
             onExit { }
 
@@ -237,7 +272,7 @@ internal class AppStateMachineManager(
     ///////////
     context(scope: BuildingStateMachine)
     private suspend fun errorState() = with(scope) {
-        addState (Error)
+        addState(Error)
         {
 
             onEntry { scope ->
@@ -256,51 +291,118 @@ internal class AppStateMachineManager(
         }
     }
 
+    suspend fun sendRichLog(richLog: RichLog, socket: Socket): Either<AdbError, Success> =
 
-    //////////////
-    // disabled //
-    //////////////
-    context(scope: BuildingStateMachine)
-    private suspend fun disabledState() = with(scope) {
-        addState(ViewerAppStates.Disabled) {
-            onEntry { scope ->
-                val sc = CoroutineScope(Dispatchers.Default + SupervisorJob())
-                sc.launch {
-                    while (true) {
-                        if (component.isLoggingEnabledFlow.value) {
-                            machine.processEvent(AppEvent.Disconnect)
-                            return@launch
-                        }
+        withContext(Dispatchers.IO) {
+            either {
+                try {
+                    val w = ensureWriter(socket).bind()
 
-                        delay(500)
-                    }
+                    var specialRichLog: RichLog? = null
+
+                    specialRichLog = RichLog(
+                        timestampMillis = Calendar.getInstance().timeInMillis,
+                        richText = RichText(
+                            richSegments = listOf(
+                                RichSegment(
+                                    text = TextType("ceci "),
+                                    style = Style(bold = false, underline = false),
+                                ),
+                                RichSegment(
+                                    text = TextType("est "),
+                                    style = Style(bold = true, underline = false),
+                                ),
+                                RichSegment(
+                                    text = TextType("un "),
+                                    style = Style(bold = true, underline = true),
+                                ),
+                                RichSegment(
+                                    text = TextType("castor"),
+                                    style = Style(bold = false, underline = true),
+                                )
+                            )
+                        )
+                    )
+
+                    //mode normal
+                    specialRichLog = null
+
+                    val payload = Gson().toJson(specialRichLog ?: richLog)
+                    w.write(payload)
+                    w.write("\n")
+                    w.flush()
+
+                    println("richLog emitted: ${richLog.raw()}")
+
+                } catch (ex: Exception) {
+                    ex.printStackTrace()
+                    socket.shutdownOutput()
+                    socket.close()
+                    // fait sortir du either avec un Left
+                    raise(AdbError.ExceptionThrown(ex))
                 }
+
+                // Si on arrive ici, tout s'est bien passé
+                Success
             }
+        }
 
-            onExit { }
+    private fun ensureWriter(socket: Socket): Either<AdbError, BufferedWriter> = either {
+        try {
+            val w = socket.getOutputStream().bufferedWriter(Charsets.UTF_8)
+            return w.right()
+        } catch (ex: Exception) {
+            raise(AdbError.ExceptionThrown(ex))
+        }
+    }
 
-            transition<AppEvent.Disconnect> {
-                targetState = ViewerAppStates.Disconnected
-                onTriggered { scope ->
-                    println("transition Disconnect")
+
+    context(coroutineScope: CoroutineScope)
+    fun createEmitterJob(socket: Socket) = coroutineScope.launch(start = CoroutineStart.LAZY) {
+        for (log in component.logsToBeSentToViewer) {
+
+            val emissionRresult = sendRichLog(log, socket)
+            emissionRresult.fold(
+                ifLeft = { error ->
+                    throw CancellationException(NetworkBehavior.Emitter.name)
+//                    println("state Connected: émission en erreur")>
+//                    machine.processEvent(GoOnError("erreur lors d'émission".toErrorMessage()))
+                },
+                ifRight = {
+
                 }
+            )
+        }
+    }
+
+    context(coroutineScope: CoroutineScope)
+    fun createReceiverJob(socket: Socket) = coroutineScope.launch(start = CoroutineStart.LAZY) {
+        deviceAPI.readClientLines(socket!!) { line ->
+            try {
+                val event = Gson().fromJson(line, ServerMessage::class.java)
+                println("state Connecté: reçu message (brut=${event.text})")
+                component.sendMessageToApp(event)
+            } catch (ex: Exception) {
+                throw CancellationException(NetworkBehavior.Receiver.name)
+
+//                println("state Connecté: erreur lors parsing de : $line")
+//                component.setStateMessage("erreur lors parsing".toStateMessage())
             }
         }
     }
 
-}
+    internal sealed class AndroidAppStates : DefaultState() {
+        object Disconnected : AndroidAppStates()
+        object Listening : AndroidAppStates()
+        object Connected : AndroidAppStates()
+        object Error : AndroidAppStates()
+    }
 
-internal sealed class AndroidAppStates : DefaultState() {
-    object Disconnected : AndroidAppStates()
-    object Listening : AndroidAppStates()
-    object Connected : AndroidAppStates()
-    object Error : AndroidAppStates()
-}
+    internal object InitializeAppLogging {
+        private val stateMachine: ViewerStateMachineManager by inject(ViewerStateMachineManager::class.java)
 
-internal object InitializeAppLogging {
-    private val stateMachine: ViewerStateMachineManager by inject(ViewerStateMachineManager::class.java)
-
-    init {
-        println(stateMachine.toString().substring(0, 0))
+        init {
+            println(stateMachine.toString().substring(0, 0))
+        }
     }
 }

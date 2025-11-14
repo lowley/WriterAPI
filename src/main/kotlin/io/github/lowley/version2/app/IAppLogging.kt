@@ -17,7 +17,7 @@ interface IAppLogging {
     ////////////////////////
     // envoi d'un message //
     ////////////////////////
-    suspend fun sendLogToServer(richLog: RichLog)
+    fun sendLogToAPI(log: RichLog)
 
     /////////////////////////////////////
     // message d'info de l'état actuel //

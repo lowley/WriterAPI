@@ -109,7 +109,7 @@ internal class ViewerStateMachineManager(
                                     component.sendStateMessageToViewer("ServerSocket obtenu".toStateMessage())
                                     serverSocket = Some(seso)
 
-                                    machine.processEvent(AppEvent.StartListening(seso))
+                                    machine.processEvent(AppEvent.Listen(seso))
                                 }
                             )
                         }
@@ -121,7 +121,7 @@ internal class ViewerStateMachineManager(
             }
             onExit { }
 
-            transition<AppEvent.StartListening> {
+            transition<AppEvent.Listen> {
                 targetState = ViewerAppStates.Listening
                 onTriggered { scope ->
                     println("transition StartListening")

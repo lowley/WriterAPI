@@ -9,3 +9,10 @@ value class StateMessage(val message: String){
 
 
 internal fun String.toStateMessage(): StateMessage = StateMessage(this)
+
+object Success
+
+enum class NetworkBehavior(text: String){
+    Emitter("Emitter"),
+    Receiver("Receiver"),
+}

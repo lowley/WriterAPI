@@ -12,12 +12,8 @@ import io.github.lowley.common.RichLog
 import io.github.lowley.common.ServerMessage
 import io.github.lowley.common.socket
 import io.github.lowley.receiver.IDeviceAPI
-import io.github.lowley.version2.common.Connect
-import io.github.lowley.version2.common.Disable
-import io.github.lowley.version2.common.Disconnect
+import io.github.lowley.version2.common.*
 import io.github.lowley.version2.common.ErrorMessage
-import io.github.lowley.version2.common.GoOnError
-import io.github.lowley.version2.common.Listen
 import io.github.lowley.version2.common.NetworkBehavior
 import io.github.lowley.version2.common.Success
 import io.github.lowley.version2.common.toErrorMessage
@@ -117,25 +113,25 @@ internal class ViewerStateMachineManager(
                         ifLeft = { error ->
                             component.setStateMessage("Obtention de la connexion impossible".toStateMessage())
                             println("state Disconnected: connexion à l'app impossible")
-                            machine.processEvent(GoOnError(error.toErrorMessage()))
+                            machine.processEvent(SurfaceGoOnError(error.toErrorMessage()))
                         },
                         ifRight = {
                             socket = result.getOrNull().toOption()
                             component.setStateMessage("Connexion établie".toStateMessage())
                             println("state Disconnected: connexion établie à $HHmmss")
-                            machine.processEvent(Connect)
+                            machine.processEvent(SurfaceConnect)
                         }
                     )
 
                 } else {
                     component.setStateMessage("Désactivation demandée".toStateMessage())
-                    machine.processEvent(Disable)
+                    machine.processEvent(SurfaceDisable)
                 }
             }
             onExit { }
 
             // transition -> LISTEN
-            transition<Listen> {
+            transition<SurfaceListen> {
                 targetState = ViewerAppStates.Listening
                 onTriggered { scope ->
                     println("transition StartListening")
@@ -143,7 +139,7 @@ internal class ViewerStateMachineManager(
             }
 
             // transition -> GOONERROR
-            transition<GoOnError> {
+            transition<SurfaceGoOnError> {
                 targetState = ViewerAppStates.Error
                 onTriggered { scope ->
                     println("transition GoOnError")
@@ -152,7 +148,7 @@ internal class ViewerStateMachineManager(
             }
 
             // transition -> DISABLE
-            transition<Disable> {
+            transition<SurfaceDisable> {
                 targetState = ViewerAppStates.Disabled
                 onTriggered { scope ->
                     println("transition Disable")
@@ -170,7 +166,7 @@ internal class ViewerStateMachineManager(
             onEntry { scope ->
                 if (socket == null) {
                     println("state Connected: socket reçue vide")
-                    machine.processEvent(GoOnError("erreur interne de socket".toErrorMessage()))
+                    machine.processEvent(SurfaceGoOnError("erreur interne de socket".toErrorMessage()))
                 }
 
                 var emitterJob = with(coroutineScope) { createEmitterJob(socket.getOrNull()!!) }
@@ -192,7 +188,7 @@ internal class ViewerStateMachineManager(
                             }
                             println("state Connected: erreur d'émission")
                             component.setStateMessage("erreur d'émission d'un message".toStateMessage())
-                            machine.processEvent(Listen)
+                            machine.processEvent(SurfaceListen)
                         }
 
                         NetworkBehavior.Receiver.name -> {
@@ -202,7 +198,7 @@ internal class ViewerStateMachineManager(
                             }
                             println("state Connected: erreur de réception")
                             component.setStateMessage("erreur de réception de message du Viewer".toStateMessage())
-                            machine.processEvent(Listen)
+                            machine.processEvent(SurfaceListen)
                         }
                     }
                 }
@@ -212,7 +208,7 @@ internal class ViewerStateMachineManager(
 
                 if (!component.isLoggingEnabledFlow.value) {
                     component.setStateMessage("Désactivation demandée".toStateMessage())
-                    machine.processEvent(Disable)
+                    machine.processEvent(SurfaceDisable)
                     return@onEntry
                 }
 
@@ -236,12 +232,12 @@ internal class ViewerStateMachineManager(
                 }
 
                 component.setStateMessage("Déconnexion initiée par le correspondant".toStateMessage())
-                machine.processEvent(Disconnect)
+                machine.processEvent(SurfaceDisconnect)
             }
             onExit { }
 
             // transition -> DISCONNECT
-            transition<Disconnect> {
+            transition<SurfaceDisconnect> {
                 targetState = ViewerAppStates.Disconnected
                 onTriggered { scope ->
                     println("transition Disconnect")
@@ -251,7 +247,7 @@ internal class ViewerStateMachineManager(
             }
 
             // transition -> DISABLE
-            transition<Disable> {
+            transition<SurfaceDisable> {
                 targetState = ViewerAppStates.Disabled
                 onTriggered { scope ->
                     println("transition Disable")
@@ -269,7 +265,7 @@ internal class ViewerStateMachineManager(
             onEntry { scope ->
                 if (!component.isLoggingEnabledFlow.value) {
                     component.setStateMessage("Désactivation demandée".toStateMessage())
-                    machine.processEvent(Disable)
+                    machine.processEvent(SurfaceDisable)
                     return@onEntry
                 }
 
@@ -281,14 +277,14 @@ internal class ViewerStateMachineManager(
 
             //manuel
             // transition -> DISCONNECT
-            transition<Disconnect> {
+            transition<SurfaceDisconnect> {
                 targetState = ViewerAppStates.Disconnected
                 onTriggered { scope ->
                 }
             }
 
             // transition -> DISABLE
-            transition<Disable> {
+            transition<SurfaceDisable> {
                 targetState = ViewerAppStates.Disabled
                 onTriggered { scope ->
                     println("transition Disable")
@@ -308,7 +304,7 @@ internal class ViewerStateMachineManager(
                 sc.launch {
                     while (true) {
                         if (component.isLoggingEnabledFlow.value) {
-                            machine.processEvent(Disconnect)
+                            machine.processEvent(SurfaceDisconnect)
                             return@launch
                         }
 
@@ -320,7 +316,7 @@ internal class ViewerStateMachineManager(
             onExit { }
 
             // transition -> DISCONNECT
-            transition<Disconnect> {
+            transition<SurfaceDisconnect> {
                 targetState = ViewerAppStates.Disconnected
                 onTriggered { scope ->
                     println("transition Disconnect")

@@ -37,14 +37,11 @@ import kotlin.getValue
 import java.net.ServerSocket
 import java.net.Socket
 import io.github.lowley.version2.common.ErrorMessage
+import io.github.lowley.version2.common.Events
 import io.github.lowley.version2.common.toErrorMessage
 import io.github.lowley.version2.common.toStateMessage
 import io.github.lowley.version2.surface.utils.ViewerStateMachineManager
 import io.github.lowley.version2.dive.utils.AppStateMachineManager.AndroidAppStates.*
-import io.github.lowley.version2.common.Connect
-import io.github.lowley.version2.common.Disconnect
-import io.github.lowley.version2.common.GoOnError
-import io.github.lowley.version2.common.Listen
 import io.github.lowley.version2.common.NetworkBehavior
 import io.github.lowley.version2.common.Success
 import kotlinx.coroutines.CoroutineStart
@@ -53,6 +50,7 @@ import ru.nsk.kstatemachine.statemachine.BuildingStateMachine
 import java.io.BufferedWriter
 import java.util.Calendar
 import kotlinx.coroutines.CancellationException
+import io.github.lowley.version2.common.*
 
 internal class AppStateMachineManager(
     val component: AppLogging,
@@ -63,7 +61,7 @@ internal class AppStateMachineManager(
     var adbComMachine: StateMachine? = null
     var socket: Option<Socket> = None
     var serverSocket: Option<ServerSocket> = None
-
+    
     init {
         scope.launch() {
             adbComMachine = getStateMachine(scope)
@@ -104,21 +102,21 @@ internal class AppStateMachineManager(
                 result.fold(
                     ifLeft = { error ->
                         println("state Disconnected: reverseAdb en erreur")
-                        machine.processEvent(GoOnError(error.toErrorMessage()))
+                        machine.processEvent(DiveGoOnError(error.toErrorMessage()))
                     },
                     ifRight = {
                         val result2 = serverSocket()
                         result2.fold(
                             ifLeft = { error ->
                                 println("state Disconnected: serverSocket pas obtenu")
-                                machine.processEvent(GoOnError(error.toErrorMessage()))
+                                machine.processEvent(DiveGoOnError(error.toErrorMessage()))
                             },
                             ifRight = { seso ->
                                 println("state Disconnected: serverSocket obtenu")
                                 component.setStateMessage("serverSocket obtenu".toStateMessage())
                                 serverSocket = Some(seso)
 
-                                machine.processEvent(Listen)
+                                machine.processEvent(DiveListen)
                             }
                         )
                     }
@@ -127,8 +125,8 @@ internal class AppStateMachineManager(
 
             onExit() {}
 
-            // transition -> LISTEN
-            transition<Listen>
+            // transition -> DiveListen
+            transition<DiveListen>
             {
                 targetState = Listening
                 onTriggered { scope ->
@@ -136,12 +134,12 @@ internal class AppStateMachineManager(
                 }
             }
 
-            // transition -> GOONERROR
-            transition<GoOnError>
+            // transition -> DiveGoOnError
+            transition<DiveGoOnError>
             {
                 targetState = Error
                 onTriggered { scope ->
-                    println("transition GoOnError")
+                    println("transition DiveGoOnError")
                     scope.transition.argument = scope.event.text
                 }
             }
@@ -164,38 +162,38 @@ internal class AppStateMachineManager(
                         result.fold(
                             ifLeft = { error ->
                                 println("state Listening: erreur lors recherche client")
-                                machine.processEvent(GoOnError(error.toErrorMessage()))
+                                machine.processEvent(DiveGoOnError(error.toErrorMessage()))
                             },
                             ifRight = { so ->
                                 socket = so.toOption()
                                 println("state Listening: client obtenu")
                                 component.setStateMessage("client obtenu".toStateMessage())
-                                machine.processEvent(Connect)
+                                machine.processEvent(DiveConnect)
                             }
                         )
                     },
                     ifEmpty = {
                         println("state Listening: erreur lors recherche client")
-                        machine.processEvent(GoOnError("erreur lors recherche client".toErrorMessage()))
+                        machine.processEvent(DiveGoOnError("erreur lors recherche client".toErrorMessage()))
                     }
                 )
             }
 
             onExit { }
 
-            // transition -> CONNECT
-            transition<Connect> {
+            // transition -> DiveConnect
+            transition<DiveConnect> {
                 targetState = Connected
                 onTriggered { scope ->
-                    println("transition Connect")
+                    println("transition DiveConnect")
                 }
             }
 
-            // transition -> GOONERROR
-            transition<GoOnError> {
+            // transition -> DiveGoOnError
+            transition<DiveGoOnError> {
                 targetState = Error
                 onTriggered { scope ->
-                    println("transition GoOnError")
+                    println("transition DiveGoOnError")
                     scope.transition.argument = scope.event.text
                 }
             }
@@ -215,7 +213,7 @@ internal class AppStateMachineManager(
             onEntry { scope ->
                 if (socket == null) {
                     println("state Connected: socket reçue vide")
-                    machine.processEvent(GoOnError("erreur interne de socket".toErrorMessage()))
+                    machine.processEvent(DiveGoOnError("erreur interne de socket".toErrorMessage()))
                 }
 
                 var emitterJob = with(coroutineJob) { createEmitterJob(socket.getOrNull()!!) }
@@ -237,7 +235,7 @@ internal class AppStateMachineManager(
                             }
                             println("state Connected: erreur d'émission")
                             component.setStateMessage("erreur d'émission de log".toStateMessage())
-                            machine.processEvent(Listen)
+                            machine.processEvent(DiveListen)
                         }
 
                         NetworkBehavior.Receiver.name -> {
@@ -247,19 +245,19 @@ internal class AppStateMachineManager(
                             }
                             println("state Connected: erreur de réception")
                             component.setStateMessage("erreur de réception de message du Viewer".toStateMessage())
-                            machine.processEvent(Listen)
+                            machine.processEvent(DiveListen)
                         }
                     }
                 }
 
 //                component.setStateMessage("déconnexion initiée par le correspondant".toStateMessage())
-//                machine.processEvent(Disconnect)
+//                machine.processEvent(DiveDisconnect)
             }
 
             onExit { }
 
-            // transition -> DISCONNECT
-            transition<Disconnect> {
+            // transition -> DiveDisconnect
+            transition<DiveDisconnect> {
                 targetState = Disconnected
                 onTriggered { scope ->
                     socket.onSome { it.close() }
@@ -284,8 +282,8 @@ internal class AppStateMachineManager(
             onExit { }
 
             //manuel
-            // transition -> DISCONNECT
-            transition<Disconnect> {
+            // transition -> DiveDisconnect
+            transition<DiveDisconnect> {
                 targetState = Disconnected
                 onTriggered { scope ->
                 }
@@ -368,7 +366,7 @@ internal class AppStateMachineManager(
                 ifLeft = { error ->
                     throw CancellationException(NetworkBehavior.Emitter.name)
 //                    println("state Connected: émission en erreur")>
-//                    machine.processEvent(GoOnError("erreur lors d'émission".toErrorMessage()))
+//                    machine.processEvent(DiveGoOnError("erreur lors d'émission".toErrorMessage()))
                 },
                 ifRight = {
 

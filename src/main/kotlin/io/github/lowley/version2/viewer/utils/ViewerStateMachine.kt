@@ -109,7 +109,7 @@ internal class ViewerStateMachineManager(
                                     component.sendStateMessageToViewer("ServerSocket obtenu".toStateMessage())
                                     serverSocket = Some(seso)
 
-                                    machine.processEvent(AppEvent.Listen(seso))
+                                    machine.processEvent(AppEvent.Listen)
                                 }
                             )
                         }
@@ -121,14 +121,15 @@ internal class ViewerStateMachineManager(
             }
             onExit { }
 
+            // transition -> LISTEN
             transition<AppEvent.Listen> {
                 targetState = ViewerAppStates.Listening
                 onTriggered { scope ->
                     println("transition StartListening")
-                    scope.transition.argument = scope.event.serverSocket
                 }
             }
 
+            // transition -> GOONERROR
             transition<AppEvent.GoOnError> {
                 targetState = ViewerAppStates.Error
                 onTriggered { scope ->
@@ -137,6 +138,7 @@ internal class ViewerStateMachineManager(
                 }
             }
 
+            // transition -> DISABLE
             transition<AppEvent.Disable> {
                 targetState = ViewerAppStates.Disabled
                 onTriggered { scope ->
@@ -188,6 +190,7 @@ internal class ViewerStateMachineManager(
                 }
             }
 
+            // transition -> CONNECT
             transition<AppEvent.Connect> {
                 targetState = ViewerAppStates.Connected
                 onTriggered { scope ->
@@ -196,6 +199,7 @@ internal class ViewerStateMachineManager(
                 }
             }
 
+            // transition -> GOONERROR
             transition<AppEvent.GoOnError> {
                 targetState = ViewerAppStates.Error
                 onTriggered { scope ->
@@ -204,6 +208,7 @@ internal class ViewerStateMachineManager(
                 }
             }
 
+            // transition -> DISABLE
             transition<AppEvent.Disable> {
                 targetState = ViewerAppStates.Disabled
                 onTriggered { scope ->
@@ -250,6 +255,7 @@ internal class ViewerStateMachineManager(
             }
             onExit { }
 
+            // transition -> DISCONNECT
             transition<AppEvent.Disconnect> {
                 targetState = ViewerAppStates.Disconnected
                 onTriggered { scope ->
@@ -259,6 +265,7 @@ internal class ViewerStateMachineManager(
                 }
             }
 
+            // transition -> DISABLE
             transition<AppEvent.Disable> {
                 targetState = ViewerAppStates.Disabled
                 onTriggered { scope ->
@@ -288,12 +295,14 @@ internal class ViewerStateMachineManager(
             onExit { }
 
             //manuel
+            // transition -> DISCONNECT
             transition<AppEvent.Disconnect> {
                 targetState = ViewerAppStates.Disconnected
                 onTriggered { scope ->
                 }
             }
 
+            // transition -> DISABLE
             transition<AppEvent.Disable> {
                 targetState = ViewerAppStates.Disabled
                 onTriggered { scope ->
@@ -331,6 +340,7 @@ internal class ViewerStateMachineManager(
 
             onExit { }
 
+            // transition -> DISCONNECT
             transition<AppEvent.Disconnect> {
                 targetState = ViewerAppStates.Disconnected
                 onTriggered { scope ->

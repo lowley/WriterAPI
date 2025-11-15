@@ -127,6 +127,7 @@ internal class AppStateMachineManager(
 
             onExit() {}
 
+            // transition -> LISTEN
             transition<Listen>
             {
                 targetState = Listening
@@ -135,6 +136,7 @@ internal class AppStateMachineManager(
                 }
             }
 
+            // transition -> GOONERROR
             transition<GoOnError>
             {
                 targetState = Error
@@ -180,6 +182,7 @@ internal class AppStateMachineManager(
 
             onExit { }
 
+            // transition -> CONNECT
             transition<Connect> {
                 targetState = Connected
                 onTriggered { scope ->
@@ -188,6 +191,7 @@ internal class AppStateMachineManager(
                 }
             }
 
+            // transition -> GOONERROR
             transition<GoOnError> {
                 targetState = Error
                 onTriggered { scope ->
@@ -257,6 +261,7 @@ internal class AppStateMachineManager(
 
             onExit { }
 
+            // transition -> DISCONNECT
             transition<Disconnect> {
                 targetState = Disconnected
                 onTriggered { scope ->
@@ -283,6 +288,7 @@ internal class AppStateMachineManager(
             onExit { }
 
             //manuel
+            // transition -> DISCONNECT
             transition<Disconnect> {
                 targetState = Disconnected
                 onTriggered { scope ->

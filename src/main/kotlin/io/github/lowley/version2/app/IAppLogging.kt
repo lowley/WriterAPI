@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
 interface IAppLogging {
-    object Success
 
     //////////////////////////
     // démarrage du service //
@@ -22,13 +21,6 @@ interface IAppLogging {
     /////////////////////////////////////
     // message d'info de l'état actuel //
     /////////////////////////////////////
-    val stateMessage: StateFlow<StateMessage>
-    fun setStateMessage(stateMessage: StateMessage)
-
-    /////////////////////////////////////////////
-    // flux des ServerMessage reçus du serveur //
-    /////////////////////////////////////////////
-    val messages: SharedFlow<ServerMessage>
-
+    val stateMessageFlow: StateFlow<StateMessage>
 }
 

@@ -36,11 +36,11 @@ object AppLogging : IAppLogging {
     /////////////////////////////////////
     // message d'info de l'état actuel //
     /////////////////////////////////////
-    private val _stateMessage = MutableStateFlow(StateMessage.EMPTY)
-    override val stateMessage = _stateMessage.asStateFlow()
+    private val _stateMessageFlow = MutableStateFlow(StateMessage.EMPTY)
+    override val stateMessageFlow = _stateMessageFlow.asStateFlow()
 
-    override fun setStateMessage(stateMessage: StateMessage) {
-        _stateMessage.update { stateMessage }
+    fun setStateMessage(stateMessage: StateMessage) {
+        _stateMessageFlow.update { stateMessage }
     }
 
     /////////////////////////////////////////////
@@ -49,7 +49,7 @@ object AppLogging : IAppLogging {
     private val _messages = MutableSharedFlow<ServerMessage>(replay = 0, extraBufferCapacity = 64)
 
     //#[[plogs]]
-    override val messages = _messages.asSharedFlow()
+    val messages = _messages.asSharedFlow()
 
     /**
      * Méthode interne pour envoyer les ServerMessages reçus vers "message" qui est lu par l'app

@@ -7,15 +7,17 @@ import io.github.lowley.version2.viewer.utils.InitializeViewerLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 object ViewerLogging : IViewerLogging {
 
-    val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    internal val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     //////////////////////////
     // Démarrage du service //
@@ -31,7 +33,7 @@ object ViewerLogging : IViewerLogging {
 
     override val stateMessageFlow = _stateMessageFlow.asStateFlow()
 
-    override fun sendStateMessageToViewer(stateMessage: StateMessage) {
+    internal fun sendStateMessageToViewer(stateMessage: StateMessage) {
         _stateMessageFlow.update { stateMessage }
     }
 
@@ -41,7 +43,7 @@ object ViewerLogging : IViewerLogging {
     private val _isLoggingEnabledFlow = MutableStateFlow<Boolean>(false)
     override val isLoggingEnabledFlow = _isLoggingEnabledFlow.asStateFlow()
 
-    override fun enableLogs(enabled: Boolean) {
+    override fun toggleLogs(enabled: Boolean) {
         _isLoggingEnabledFlow.update { enabled }
     }
 
@@ -63,10 +65,26 @@ object ViewerLogging : IViewerLogging {
 
     override val logFlow = _logs.asSharedFlow()
 
-    //////////////////////////////////////////////
-    // envoi d'un ServerMessage à l'app Android //
-    //////////////////////////////////////////////
-    override fun emit(message: ServerMessage) {
-        //TODO compléter
+    internal fun sendLogToViewer(log: RichLog){
+        scope.launch(Dispatchers.IO) {
+            _logs.emit(log)
+        }
+    }
+
+    //////////////////////////////////////
+    // envoi d'un ServerMessage à l'app //
+    //////////////////////////////////////
+    internal val messagesToBeSentToApp = Channel<ServerMessage>(capacity = Channel.BUFFERED)
+
+    // voir [[addToLogsToBeSentToViewer]]
+    override fun sendMessageToApp(message: ServerMessage) {
+        messagesToBeSentToApp.trySend(message)
     }
 }
+
+// #[[addToLogsToBeSentToViewer]]
+fun ServerMessage.addToLogsToBeSentToViewer(){
+    ViewerLogging.sendMessageToApp(this)
+}
+
+

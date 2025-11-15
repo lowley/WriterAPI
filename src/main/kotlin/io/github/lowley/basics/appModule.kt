@@ -7,14 +7,14 @@ import io.github.lowley.emitter.LoggerCommunicationAPI
 import io.github.lowley.emitter.Parser
 import io.github.lowley.receiver.DeviceAPI
 import io.github.lowley.receiver.IDeviceAPI
-import io.github.lowley.version2.app.AppLogging
-import io.github.lowley.version2.app.IAppLogging
-import io.github.lowley.version2.viewer.IViewerLogging
-import io.github.lowley.version2.viewer.ViewerLogging
+import io.github.lowley.version2.dive.AppLogging
+import io.github.lowley.version2.dive.IAppLogging
+import io.github.lowley.version2.surface.IViewerLogging
+import io.github.lowley.version2.surface.ViewerLogging
 
 import org.koin.dsl.module
-import io.github.lowley.version2.app.utils.AppStateMachineManager
-import io.github.lowley.version2.viewer.utils.ViewerStateMachineManager
+import io.github.lowley.version2.dive.utils.AppStateMachineManager
+import io.github.lowley.version2.surface.utils.ViewerStateMachineManager
 
 val appModule = module {
     single<IParser> { Parser() }

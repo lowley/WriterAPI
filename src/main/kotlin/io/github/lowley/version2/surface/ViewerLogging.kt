@@ -1,9 +1,14 @@
-package io.github.lowley.version2.viewer
+package io.github.lowley.version2.surface
 
+import arrow.core.Either
+import arrow.core.raise.either
+import arrow.core.right
+import io.github.lowley.common.AdbError
 import io.github.lowley.common.RichLog
 import io.github.lowley.common.ServerMessage
 import io.github.lowley.version2.common.StateMessage
-import io.github.lowley.version2.viewer.utils.InitializeViewerLogging
+import io.github.lowley.version2.common.Success
+import io.github.lowley.version2.surface.utils.InitializeViewerLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -33,7 +38,7 @@ object ViewerLogging : IViewerLogging {
 
     override val stateMessageFlow = _stateMessageFlow.asStateFlow()
 
-    internal fun sendStateMessageToViewer(stateMessage: StateMessage) {
+    internal fun setStateMessage(stateMessage: StateMessage) {
         _stateMessageFlow.update { stateMessage }
     }
 
@@ -65,7 +70,7 @@ object ViewerLogging : IViewerLogging {
 
     override val logFlow = _logs.asSharedFlow()
 
-    internal fun sendLogToViewer(log: RichLog){
+    internal fun sendLogToViewer(log: RichLog) {
         scope.launch(Dispatchers.IO) {
             _logs.emit(log)
         }
@@ -77,14 +82,24 @@ object ViewerLogging : IViewerLogging {
     internal val messagesToBeSentToApp = Channel<ServerMessage>(capacity = Channel.BUFFERED)
 
     // voir [[addToLogsToBeSentToViewer]]
-    override fun sendMessageToApp(message: ServerMessage) {
-        messagesToBeSentToApp.trySend(message)
+    override suspend fun sendMessageToApp(message: ServerMessage): Either<AdbError, Success> = either {
+
+        try {
+            messagesToBeSentToApp.send(message)
+            return Success.right()
+
+        } catch (ex: Exception) {
+            raise(AdbError.ExceptionThrown(ex))
+        }
     }
 }
 
 // #[[addToLogsToBeSentToViewer]]
-fun ServerMessage.addToLogsToBeSentToViewer(){
-    ViewerLogging.sendMessageToApp(this)
+fun ServerMessage.addToLogsToBeSentToViewer() {
+    val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    scope.launch {
+        ViewerLogging.sendMessageToApp(this@addToLogsToBeSentToViewer)
+    }
 }
 
 

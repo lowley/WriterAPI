@@ -1,10 +1,11 @@
-package io.github.lowley.version2.viewer
+package io.github.lowley.version2.surface
 
+import arrow.core.Either
+import io.github.lowley.common.AdbError
 import io.github.lowley.common.RichLog
 import io.github.lowley.common.ServerMessage
-import io.github.lowley.version2.app.AppLogging
 import io.github.lowley.version2.common.StateMessage
-import kotlinx.coroutines.channels.Channel
+import io.github.lowley.version2.common.Success
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -37,6 +38,6 @@ interface IViewerLogging {
     // envoi d'un ServerMessage à l'app Android //
     //////////////////////////////////////////////
 
-    fun sendMessageToApp(message: ServerMessage)
+    suspend fun sendMessageToApp(message: ServerMessage): Either<AdbError, Success>
 }
 

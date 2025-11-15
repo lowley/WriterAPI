@@ -2,18 +2,16 @@ package io.github.lowley.version2.common
 
 import io.github.lowley.common.AdbError
 import ru.nsk.kstatemachine.event.Event
-import java.net.ServerSocket
-import java.net.Socket
 
-interface WEvent: Event
+internal sealed interface DiveEvent         //app android
+internal sealed interface SurfaceEvent      //boat
 
-internal sealed class AppEvent(){
-    object Listen: Event, AppEvent()
-    object Disconnect : Event, AppEvent()
-    data class Connect(val socket: Socket) : Event, AppEvent()
-    data class GoOnError(val text: ErrorMessage) : Event, AppEvent()
-    object Disable: Event, AppEvent()
-}
+internal object Listen: Event, SurfaceEvent
+internal object Disconnect : Event, DiveEvent, SurfaceEvent
+internal object Connect : Event, DiveEvent, SurfaceEvent
+internal data class GoOnError(val text: ErrorMessage) : Event, DiveEvent, SurfaceEvent
+internal object Disable: Event, SurfaceEvent
+
 
 @JvmInline
 value class ErrorMessage(val text: String){

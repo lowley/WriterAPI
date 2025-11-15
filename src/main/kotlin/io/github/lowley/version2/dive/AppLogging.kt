@@ -1,4 +1,4 @@
-package io.github.lowley.version2.app
+package io.github.lowley.version2.dive
 
 import io.github.lowley.common.RichLog
 import io.github.lowley.common.ServerMessage
@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import io.github.lowley.version2.app.utils.AppStateMachineManager.InitializeAppLogging
+import io.github.lowley.version2.dive.utils.AppStateMachineManager.InitializeAppLogging
 
 object AppLogging : IAppLogging {
 
@@ -59,8 +59,6 @@ object AppLogging : IAppLogging {
     internal suspend fun sendMessageToApp(log: ServerMessage) {
         _messages.emit(log)
     }
-
-
 }
 
 // #[[RichLog.addToLogsToBeSentToViewer]]

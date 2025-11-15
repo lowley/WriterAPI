@@ -1,4 +1,4 @@
-package io.github.lowley.version2.app.utils
+package io.github.lowley.version2.dive.utils
 
 import arrow.core.Either
 import arrow.core.None
@@ -6,6 +6,7 @@ import arrow.core.Option
 import arrow.core.Some
 import arrow.core.raise.either
 import arrow.core.right
+import arrow.core.toOption
 import com.google.gson.Gson
 import io.github.lowley.common.AdbError
 import io.github.lowley.common.RichLog
@@ -16,9 +17,8 @@ import io.github.lowley.common.Style
 import io.github.lowley.common.TextType
 import io.github.lowley.common.searchClient
 import io.github.lowley.common.serverSocket
-import io.github.lowley.common.socket
 import io.github.lowley.receiver.IDeviceAPI
-import io.github.lowley.version2.app.AppLogging
+import io.github.lowley.version2.dive.AppLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -34,20 +34,20 @@ import ru.nsk.kstatemachine.statemachine.StateMachine
 import ru.nsk.kstatemachine.statemachine.createStateMachine
 import ru.nsk.kstatemachine.transition.onTriggered
 import kotlin.getValue
-import io.github.lowley.version2.common.AppEvent.*
 import java.net.ServerSocket
 import java.net.Socket
 import io.github.lowley.version2.common.ErrorMessage
 import io.github.lowley.version2.common.toErrorMessage
 import io.github.lowley.version2.common.toStateMessage
-import io.github.lowley.version2.viewer.utils.ViewerStateMachineManager
-import io.github.lowley.version2.app.utils.AppStateMachineManager.AndroidAppStates.*
-import io.github.lowley.version2.common.AppEvent
+import io.github.lowley.version2.surface.utils.ViewerStateMachineManager
+import io.github.lowley.version2.dive.utils.AppStateMachineManager.AndroidAppStates.*
+import io.github.lowley.version2.common.Connect
+import io.github.lowley.version2.common.Disconnect
+import io.github.lowley.version2.common.GoOnError
+import io.github.lowley.version2.common.Listen
 import io.github.lowley.version2.common.NetworkBehavior
 import io.github.lowley.version2.common.Success
-import io.github.lowley.version2.viewer.utils.ViewerAppStates
 import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import ru.nsk.kstatemachine.statemachine.BuildingStateMachine
 import java.io.BufferedWriter
@@ -61,6 +61,7 @@ internal class AppStateMachineManager(
 
     val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     var adbComMachine: StateMachine? = null
+    var socket: Option<Socket> = None
     var serverSocket: Option<ServerSocket> = None
 
     init {
@@ -124,7 +125,6 @@ internal class AppStateMachineManager(
                 )
             }
 
-
             onExit() {}
 
             // transition -> LISTEN
@@ -167,9 +167,10 @@ internal class AppStateMachineManager(
                                 machine.processEvent(GoOnError(error.toErrorMessage()))
                             },
                             ifRight = { so ->
+                                socket = so.toOption()
                                 println("state Listening: client obtenu")
                                 component.setStateMessage("client obtenu".toStateMessage())
-                                machine.processEvent(Connect(so))
+                                machine.processEvent(Connect)
                             }
                         )
                     },
@@ -187,7 +188,6 @@ internal class AppStateMachineManager(
                 targetState = Connected
                 onTriggered { scope ->
                     println("transition Connect")
-                    scope.transition.argument = scope.event.socket
                 }
             }
 
@@ -213,15 +213,13 @@ internal class AppStateMachineManager(
         addState(Connected)
         {
             onEntry { scope ->
-
-                val socket = (scope.transition.argument as? Socket)
                 if (socket == null) {
                     println("state Connected: socket reçue vide")
                     machine.processEvent(GoOnError("erreur interne de socket".toErrorMessage()))
                 }
 
-                var emitterJob = with(coroutineJob) { createEmitterJob(socket!!) }
-                var receiverJob = with(coroutineJob) { createReceiverJob(socket!!) }
+                var emitterJob = with(coroutineJob) { createEmitterJob(socket.getOrNull()!!) }
+                var receiverJob = with(coroutineJob) { createReceiverJob(socket.getOrNull()!!) }
 
                 ////////////////////////////////
                 // gestion emitter & receiver //
@@ -234,7 +232,7 @@ internal class AppStateMachineManager(
                     when (ex.message) {
                         NetworkBehavior.Emitter.name -> {
                             try {
-                                socket?.close()
+                                socket.onSome { it.close() }
                             } catch (_: Exception) {
                             }
                             println("state Connected: erreur d'émission")
@@ -244,7 +242,7 @@ internal class AppStateMachineManager(
 
                         NetworkBehavior.Receiver.name -> {
                             try {
-                                socket?.close()
+                                socket.onSome { it.close() }
                             } catch (_: Exception) {
                             }
                             println("state Connected: erreur de réception")
@@ -258,15 +256,13 @@ internal class AppStateMachineManager(
 //                machine.processEvent(Disconnect)
             }
 
-
             onExit { }
 
             // transition -> DISCONNECT
             transition<Disconnect> {
                 targetState = Disconnected
                 onTriggered { scope ->
-                    val socket = scope.transition.argument as? Socket
-                    socket?.close()
+                    socket.onSome { it.close() }
                 }
             }
         }

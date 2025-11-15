@@ -1,9 +1,7 @@
-package io.github.lowley.version2.app
+package io.github.lowley.version2.dive
 
 import io.github.lowley.common.RichLog
-import io.github.lowley.common.ServerMessage
 import io.github.lowley.version2.common.StateMessage
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
 interface IAppLogging {

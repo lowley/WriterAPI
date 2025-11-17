@@ -82,7 +82,8 @@ class DeviceAPI : IDeviceAPI {
     override fun reverseAdbPort(port: Int): Either<AdbError, Unit> = try {
 
         var process: Process? = null
-        process = ProcessBuilder("adb", "reverse", "tcp:$port", "tcp:$port")
+        process = ProcessBuilder("adb", "forward", "tcp:$port", "tcp:$port")
+//        process = ProcessBuilder("adb", "reverse", "tcp:$port", "tcp:$port")
             .redirectErrorStream(true)
             .start()
 

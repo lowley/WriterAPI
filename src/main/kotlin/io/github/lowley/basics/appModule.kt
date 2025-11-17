@@ -28,6 +28,6 @@ val appModule = module {
     single<ISurfaceLogging> { SurfaceLogging }
     single<SurfaceLogging> { SurfaceLogging }
 
-    single {  DiveStateMachineManager(get(), get()) }
-    single {  SurfaceStateMachineManager(get(), get()) }
+    single {  DiveStateMachineManager() }
+    single {  SurfaceStateMachineManager() }
 }

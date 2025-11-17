@@ -27,7 +27,6 @@ internal typealias SurfaceDisable  = Events.Disable
 internal sealed class SurfaceStates : DefaultState() {
     object Disabled : SurfaceStates()
     object Disconnected : SurfaceStates()
-    object Listening : SurfaceStates()
     object Connected : SurfaceStates()
     object Error : SurfaceStates()
 }

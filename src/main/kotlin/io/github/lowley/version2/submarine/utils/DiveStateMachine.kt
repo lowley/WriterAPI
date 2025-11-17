@@ -50,17 +50,21 @@ import java.util.Calendar
 import kotlinx.coroutines.CancellationException
 import io.github.lowley.version2.common.*
 import io.github.lowley.version2.common.DiveStates.*
+import lorry.basics.appModule
+import org.koin.core.Koin
+import org.koin.core.KoinApplication
+import org.koin.dsl.koinApplication
 
-internal class DiveStateMachineManager(
-    val component: DiveLogging,
-    val deviceAPI: IDeviceAPI
-) {
+internal class DiveStateMachineManager() {
+    val component: DiveLogging = InitializeAppLogging.koin.get()
+    val deviceAPI: IDeviceAPI = InitializeAppLogging.koin.get()
+
 
     val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     var adbComMachine: StateMachine? = null
     var socket: Option<Socket> = None
     var serverSocket: Option<ServerSocket> = None
-    
+
     init {
         scope.launch() {
             adbComMachine = getStateMachine(scope)
@@ -97,27 +101,18 @@ internal class DiveStateMachineManager(
         addInitialState(DiveStates.Disconnected)
         {
             onEntry { scope ->
-                val result = deviceAPI.reverseAdbPort()
-                result.fold(
+                val result2 = serverSocket()
+                result2.fold(
                     ifLeft = { error ->
-                        println("state Disconnected: reverseAdb en erreur")
+                        println("state Disconnected: serverSocket pas obtenu")
                         machine.processEvent(DiveGoOnError(error.toErrorMessage()))
                     },
-                    ifRight = {
-                        val result2 = serverSocket()
-                        result2.fold(
-                            ifLeft = { error ->
-                                println("state Disconnected: serverSocket pas obtenu")
-                                machine.processEvent(DiveGoOnError(error.toErrorMessage()))
-                            },
-                            ifRight = { seso ->
-                                println("state Disconnected: serverSocket obtenu")
-                                component.setStateMessage("serverSocket obtenu".toStateMessage())
-                                serverSocket = Some(seso)
+                    ifRight = { seso ->
+                        println("state Disconnected: serverSocket obtenu")
+                        component.setStateMessage("serverSocket obtenu".toStateMessage())
+                        serverSocket = Some(seso)
 
-                                machine.processEvent(DiveListen)
-                            }
-                        )
+                        machine.processEvent(DiveListen)
                     }
                 )
             }
@@ -146,8 +141,8 @@ internal class DiveStateMachineManager(
     }
 
     ///////////////
-    // listening //
-    ///////////////
+// listening //
+///////////////
     context(scope: BuildingStateMachine)
     private suspend fun listeningState() = with(scope) {
         addState(Listening)
@@ -200,8 +195,8 @@ internal class DiveStateMachineManager(
     }
 
     ///////////////
-    // connected //
-    ///////////////
+// connected //
+///////////////
     context(scope: BuildingStateMachine)
     private suspend fun connectedState() = with(scope) {
 
@@ -266,8 +261,8 @@ internal class DiveStateMachineManager(
     }
 
     ///////////
-    // error //
-    ///////////
+// error //
+///////////
     context(scope: BuildingStateMachine)
     private suspend fun errorState() = with(scope) {
         addState(Error)
@@ -390,9 +385,13 @@ internal class DiveStateMachineManager(
     }
 
 
-
     internal object InitializeAppLogging {
-        private val stateMachine: SurfaceStateMachineManager by inject(SurfaceStateMachineManager::class.java)
+
+        private val app: KoinApplication = koinApplication { modules(appModule) }
+        val koin: Koin get() = app.koin
+
+        //on déclenche l'initialisation de la machine
+        private val stateMachine: DiveStateMachineManager = koin.get()
 
         init {
             println(stateMachine.toString().substring(0, 0))

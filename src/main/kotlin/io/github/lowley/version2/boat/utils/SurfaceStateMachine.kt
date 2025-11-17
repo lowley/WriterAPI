@@ -17,16 +17,14 @@ import io.github.lowley.version2.common.NetworkBehavior
 import io.github.lowley.version2.common.Success
 import io.github.lowley.version2.common.toErrorMessage
 import io.github.lowley.version2.common.toStateMessage
-import io.github.lowley.version2.submarine.utils.DiveStateMachineManager.DiveStates.Connected.machine
 import io.github.lowley.version2.boat.SurfaceLogging
+import io.github.lowley.version2.submarine.utils.DiveStateMachineManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import org.koin.java.KoinJavaComponent.inject
-import ru.nsk.kstatemachine.state.DefaultState
 import ru.nsk.kstatemachine.state.addInitialState
 import ru.nsk.kstatemachine.state.addState
 import ru.nsk.kstatemachine.state.onEntry
@@ -39,17 +37,22 @@ import kotlin.getValue
 import java.net.Socket
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import lorry.basics.appModule
+import org.koin.core.Koin
+import org.koin.core.KoinApplication
+import org.koin.core.context.GlobalContext
+import org.koin.dsl.koinApplication
 import ru.nsk.kstatemachine.statemachine.BuildingStateMachine
 import java.io.BufferedWriter
 
-internal class SurfaceStateMachineManager(
-    val component: SurfaceLogging,
-    val deviceAPI: IDeviceAPI
-) {
+internal class SurfaceStateMachineManager() {
+    val component: SurfaceLogging = InitializeViewerLogging.koin.get()
+    val deviceAPI: IDeviceAPI = InitializeViewerLogging.koin.get()
 
     private var HHmmss: String? =
         java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss").format(java.time.LocalTime.now())
-        get() = java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss").format(java.time.LocalTime.now())
+        get() = java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")
+            .format(java.time.LocalTime.now())
 
     val coroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     var adbComMachine: StateMachine? = null
@@ -99,34 +102,48 @@ internal class SurfaceStateMachineManager(
     private suspend fun disconnectedState() = with(scope) {
         addInitialState(SurfaceStates.Disconnected) {
             onEntry { scope ->
-                if (component.isLoggingEnabledFlow.value) {
-                    var result: Either<AdbError, Socket>? = null
 
-                    do {
-                        component.setStateMessage("Tentative de connexion à $HHmmss".toStateMessage())
-                        result = socket(address = "127.0.0.1", port = 7777)
+                val result0 = deviceAPI.reverseAdbPort()
+                result0.fold(
+                    ifLeft = { error ->
+                        println("state Disconnected: reverseAdb en erreur")
+                        machine.processEvent(SurfaceGoOnError(error.toErrorMessage()))
+                    },
+                    ifRight = {
+                        var result: Either<AdbError, Socket>? = null
 
-                        delay(3_000)
-                    } while (result?.isRight() == true)
+                        do {
+                            if (!component.isLoggingEnabledFlow.value) {
+                                component.setStateMessage("Désactivation demandée".toStateMessage())
+                                machine.processEvent(SurfaceDisable)
+                                return@onEntry
+                            }
 
-                    result.fold(
-                        ifLeft = { error ->
-                            component.setStateMessage("Obtention de la connexion impossible".toStateMessage())
-                            println("state Disconnected: connexion à l'app impossible")
-                            machine.processEvent(SurfaceGoOnError(error.toErrorMessage()))
-                        },
-                        ifRight = {
-                            socket = result.getOrNone()
-                            component.setStateMessage("Connexion établie".toStateMessage())
-                            println("state Disconnected: connexion établie à $HHmmss")
-                            machine.processEvent(SurfaceConnect)
-                        }
-                    )
+                            component.setStateMessage("Tentative de connexion à $HHmmss".toStateMessage())
+                            result = socket(address = "127.0.0.1", port = 7777)
 
-                } else {
-                    component.setStateMessage("Désactivation demandée".toStateMessage())
-                    machine.processEvent(SurfaceDisable)
-                }
+                            delay(3_000)
+                        } while (result.isLeft())
+
+                        result.fold(
+                            ifLeft = { error ->
+//                        component.setStateMessage("Obtention de la connexion impossible".toStateMessage())
+//                        println("state Disconnected: connexion à l'app impossible")
+//                        machine.processEvent(SurfaceGoOnError(error.toErrorMessage()))
+                            },
+                            ifRight = {
+                                socket = result.getOrNone()
+                                component.setStateMessage("Connexion établie".toStateMessage())
+                                println("state Disconnected: connexion établie à $HHmmss")
+                                machine.processEvent(SurfaceConnect)
+                            }
+                        )
+
+//                } else {
+//                    component.setStateMessage("Désactivation demandée".toStateMessage())
+//                    machine.processEvent(SurfaceDisable)
+//                }
+                    })
             }
             onExit { }
 
@@ -339,7 +356,7 @@ internal class SurfaceStateMachineManager(
         }
 
         component.setStateMessage("Déconnexion initiée par le correspondant".toStateMessage())
-        machine.processEvent(SurfaceDisconnect)
+        DiveStates.Connected.machine.processEvent(SurfaceDisconnect)
     }
 
     suspend fun sendMessage(message: ServerMessage): Either<AdbError, Success> =
@@ -386,10 +403,13 @@ internal class SurfaceStateMachineManager(
     }
 }
 
-
-
 internal object InitializeViewerLogging {
-    private val stateMachine: SurfaceStateMachineManager by inject(SurfaceStateMachineManager::class.java)
+
+    private val app: KoinApplication = koinApplication { modules(appModule) }
+    val koin: Koin get() = app.koin
+
+    //on déclenche l'initialisation de la machine
+    private val stateMachine: SurfaceStateMachineManager = koin.get()
 
     init {
         println(stateMachine.toString().substring(0, 0))

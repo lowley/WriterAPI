@@ -3,6 +3,8 @@ package io.github.lowley.emitter
 import io.github.lowley.common.RichLog
 import io.github.lowley.common.RichSegment
 import io.github.lowley.common.RichText
+import io.github.lowley.version2.submarine.DiveLogging
+import io.github.lowley.version2.submarine.utils.DiveStateMachineManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -14,8 +16,8 @@ import org.koin.core.context.GlobalContext
 ////////////////////
 
 fun write(block: LogBuilder.() -> Unit) {
-    val koin = GlobalContext.get()
-    val builder: LogBuilder = koin.get()
+
+    val builder: LogBuilder = DiveStateMachineManager.InitializeAppLogging.koin.get()
 
     builder.block()
     builder.postTreatment()
@@ -45,15 +47,16 @@ class LogBuilder(
 
     private fun send(richLog: RichLog) {
         scope.launch {
-            val result = api.sendRichLog(richLog, 7777)
-            result.fold(
-                ifLeft = {
-                    println("erreur d'envoi d'un richLog ${richLog.richText}")
-                },
-                ifRight = {
-
-                }
-            )
+            DiveLogging.sendLogToAPI(richLog)
+//            val result = api.sendRichLog(richLog, 7777)
+//            result.fold(
+//                ifLeft = {
+//                    println("erreur d'envoi d'un richLog ${richLog.richText}")
+//                },
+//                ifRight = {
+//
+//                }
+//            )
         }
 
         segments.clear()

@@ -32,7 +32,7 @@ fun socket(port: Int, address: String = "127.0.0.1"): Either<AdbError, Socket> =
 
 }
 catch (ex: Exception) {
-    ex.printStackTrace()
+//    println("socket establishment in failure")
     AdbError.ExceptionThrown(ex).left()
 }
 

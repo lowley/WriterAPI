@@ -404,7 +404,6 @@ internal class SurfaceStateMachineManager() {
 }
 
 internal object InitializeViewerLogging {
-
     private val app: KoinApplication = koinApplication { modules(appModule) }
     val koin: Koin get() = app.koin
 

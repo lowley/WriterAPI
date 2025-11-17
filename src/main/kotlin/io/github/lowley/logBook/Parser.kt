@@ -1,4 +1,4 @@
-package io.github.lowley.emitter
+package io.github.lowley.logBook
 
 import io.github.lowley.common.RichSegment
 import io.github.lowley.common.Style

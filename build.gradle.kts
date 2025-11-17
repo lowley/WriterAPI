@@ -16,8 +16,8 @@ publishing {
     publications {
         create<MavenPublication>("release") {
             from(components["java"])
-            artifactId = "writer-api"
-            pom { name.set("WriterAPI") }
+            artifactId = "periscope"
+            pom { name.set("périscope") }
         }
     }
     repositories { mavenLocal() }

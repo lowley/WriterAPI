@@ -1,4 +1,4 @@
-package io.github.lowley.version2.boat.utils
+package io.github.lowley.engineRoom.boat.utils
 
 import arrow.core.Either
 import arrow.core.None
@@ -11,14 +11,13 @@ import io.github.lowley.common.RichLog
 import io.github.lowley.common.ServerMessage
 import io.github.lowley.common.socket
 import io.github.lowley.receiver.IDeviceAPI
-import io.github.lowley.version2.common.*
-import io.github.lowley.version2.common.ErrorMessage
-import io.github.lowley.version2.common.NetworkBehavior
-import io.github.lowley.version2.common.Success
-import io.github.lowley.version2.common.toErrorMessage
-import io.github.lowley.version2.common.toStateMessage
-import io.github.lowley.version2.boat.SurfaceLogging
-import io.github.lowley.version2.submarine.utils.DiveStateMachineManager
+import io.github.lowley.engineRoom.common.*
+import io.github.lowley.engineRoom.common.ErrorMessage
+import io.github.lowley.engineRoom.common.NetworkBehavior
+import io.github.lowley.engineRoom.common.Success
+import io.github.lowley.engineRoom.common.toErrorMessage
+import io.github.lowley.engineRoom.common.toStateMessage
+import io.github.lowley.engineRoom.boat.SurfaceLogging
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -33,14 +32,12 @@ import ru.nsk.kstatemachine.state.transition
 import ru.nsk.kstatemachine.statemachine.StateMachine
 import ru.nsk.kstatemachine.statemachine.createStateMachine
 import ru.nsk.kstatemachine.transition.onTriggered
-import kotlin.getValue
 import java.net.Socket
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import lorry.basics.appModule
 import org.koin.core.Koin
 import org.koin.core.KoinApplication
-import org.koin.core.context.GlobalContext
 import org.koin.dsl.koinApplication
 import ru.nsk.kstatemachine.statemachine.BuildingStateMachine
 import java.io.BufferedWriter

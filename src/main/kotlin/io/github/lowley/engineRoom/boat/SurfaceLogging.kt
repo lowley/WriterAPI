@@ -1,4 +1,4 @@
-package io.github.lowley.version2.boat
+package io.github.lowley.engineRoom.boat
 
 import arrow.core.Either
 import arrow.core.raise.either
@@ -6,9 +6,9 @@ import arrow.core.right
 import io.github.lowley.common.AdbError
 import io.github.lowley.common.RichLog
 import io.github.lowley.common.ServerMessage
-import io.github.lowley.version2.common.StateMessage
-import io.github.lowley.version2.common.Success
-import io.github.lowley.version2.boat.utils.InitializeViewerLogging
+import io.github.lowley.engineRoom.common.StateMessage
+import io.github.lowley.engineRoom.common.Success
+import io.github.lowley.engineRoom.boat.utils.InitializeViewerLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

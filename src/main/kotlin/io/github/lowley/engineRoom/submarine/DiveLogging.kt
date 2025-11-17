@@ -1,15 +1,15 @@
-package io.github.lowley.version2.submarine
+package io.github.lowley.engineRoom.submarine
 
 import io.github.lowley.common.RichLog
 import io.github.lowley.common.ServerMessage
-import io.github.lowley.version2.common.StateMessage
+import io.github.lowley.engineRoom.common.StateMessage
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import io.github.lowley.version2.submarine.utils.DiveStateMachineManager.InitializeAppLogging
+import io.github.lowley.engineRoom.submarine.utils.DiveStateMachineManager.InitializeAppLogging
 
 object DiveLogging : IDiveLogging {
 

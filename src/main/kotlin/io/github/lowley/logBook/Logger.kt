@@ -1,15 +1,14 @@
-package io.github.lowley.emitter
+package io.github.lowley.logBook
 
 import io.github.lowley.common.RichLog
 import io.github.lowley.common.RichSegment
 import io.github.lowley.common.RichText
-import io.github.lowley.version2.submarine.DiveLogging
-import io.github.lowley.version2.submarine.utils.DiveStateMachineManager
+import io.github.lowley.engineRoom.submarine.DiveLogging
+import io.github.lowley.engineRoom.submarine.utils.DiveStateMachineManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import org.koin.core.context.GlobalContext
 
 ////////////////////
 // point d'entrée //
@@ -29,7 +28,6 @@ fun write(block: LogBuilder.() -> Unit) {
 
 class LogBuilder(
     val parser: IParser,
-    val api: ILoggerCommunicationAPI
 ) {
     val segments = mutableListOf<RichSegment>()
     val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -48,25 +46,9 @@ class LogBuilder(
     private fun send(richLog: RichLog) {
         scope.launch {
             DiveLogging.sendLogToAPI(richLog)
-//            val result = api.sendRichLog(richLog, 7777)
-//            result.fold(
-//                ifLeft = {
-//                    println("erreur d'envoi d'un richLog ${richLog.richText}")
-//                },
-//                ifRight = {
-//
-//                }
-//            )
         }
 
         segments.clear()
-    }
-
-    fun test() {
-        write {
-            log("truc")
-            log("machin")
-        }
     }
 }
 

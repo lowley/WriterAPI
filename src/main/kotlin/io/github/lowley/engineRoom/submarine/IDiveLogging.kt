@@ -1,7 +1,7 @@
-package io.github.lowley.version2.submarine
+package io.github.lowley.engineRoom.submarine
 
 import io.github.lowley.common.RichLog
-import io.github.lowley.version2.common.StateMessage
+import io.github.lowley.engineRoom.common.StateMessage
 import kotlinx.coroutines.flow.StateFlow
 
 interface IDiveLogging {

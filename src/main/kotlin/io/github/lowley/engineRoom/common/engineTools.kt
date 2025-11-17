@@ -1,4 +1,4 @@
-package io.github.lowley.version2.common
+package io.github.lowley.engineRoom.common
 
 import ru.nsk.kstatemachine.event.Event
 import ru.nsk.kstatemachine.state.DefaultState

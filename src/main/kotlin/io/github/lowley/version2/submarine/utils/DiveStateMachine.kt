@@ -1,4 +1,4 @@
-package io.github.lowley.version2.dive.utils
+package io.github.lowley.version2.submarine.utils
 
 import arrow.core.Either
 import arrow.core.None
@@ -18,7 +18,7 @@ import io.github.lowley.common.TextType
 import io.github.lowley.common.searchClient
 import io.github.lowley.common.serverSocket
 import io.github.lowley.receiver.IDeviceAPI
-import io.github.lowley.version2.dive.AppLogging
+import io.github.lowley.version2.submarine.DiveLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -37,11 +37,10 @@ import kotlin.getValue
 import java.net.ServerSocket
 import java.net.Socket
 import io.github.lowley.version2.common.ErrorMessage
-import io.github.lowley.version2.common.Events
 import io.github.lowley.version2.common.toErrorMessage
 import io.github.lowley.version2.common.toStateMessage
-import io.github.lowley.version2.surface.utils.ViewerStateMachineManager
-import io.github.lowley.version2.dive.utils.AppStateMachineManager.AndroidAppStates.*
+import io.github.lowley.version2.boat.utils.SurfaceStateMachineManager
+import io.github.lowley.version2.submarine.utils.DiveStateMachineManager.DiveStates.*
 import io.github.lowley.version2.common.NetworkBehavior
 import io.github.lowley.version2.common.Success
 import kotlinx.coroutines.CoroutineStart
@@ -52,8 +51,8 @@ import java.util.Calendar
 import kotlinx.coroutines.CancellationException
 import io.github.lowley.version2.common.*
 
-internal class AppStateMachineManager(
-    val component: AppLogging,
+internal class DiveStateMachineManager(
+    val component: DiveLogging,
     val deviceAPI: IDeviceAPI
 ) {
 
@@ -95,7 +94,7 @@ internal class AppStateMachineManager(
     //////////////////
     context(scope: BuildingStateMachine)
     private suspend fun disconnectedState() = with(scope) {
-        addInitialState(AppStateMachineManager.AndroidAppStates.Disconnected)
+        addInitialState(DiveStateMachineManager.DiveStates.Disconnected)
         {
             onEntry { scope ->
                 val result = deviceAPI.reverseAdbPort()
@@ -390,15 +389,10 @@ internal class AppStateMachineManager(
         }
     }
 
-    internal sealed class AndroidAppStates : DefaultState() {
-        object Disconnected : AndroidAppStates()
-        object Listening : AndroidAppStates()
-        object Connected : AndroidAppStates()
-        object Error : AndroidAppStates()
-    }
+
 
     internal object InitializeAppLogging {
-        private val stateMachine: ViewerStateMachineManager by inject(ViewerStateMachineManager::class.java)
+        private val stateMachine: SurfaceStateMachineManager by inject(SurfaceStateMachineManager::class.java)
 
         init {
             println(stateMachine.toString().substring(0, 0))

@@ -1,4 +1,4 @@
-package io.github.lowley.version2.surface
+package io.github.lowley.version2.boat
 
 import arrow.core.Either
 import arrow.core.raise.either
@@ -8,7 +8,7 @@ import io.github.lowley.common.RichLog
 import io.github.lowley.common.ServerMessage
 import io.github.lowley.version2.common.StateMessage
 import io.github.lowley.version2.common.Success
-import io.github.lowley.version2.surface.utils.InitializeViewerLogging
+import io.github.lowley.version2.boat.utils.InitializeViewerLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-object ViewerLogging : IViewerLogging {
+object SurfaceLogging : ISurfaceLogging {
 
     internal val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -98,7 +98,7 @@ object ViewerLogging : IViewerLogging {
 fun ServerMessage.addToLogsToBeSentToViewer() {
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     scope.launch {
-        ViewerLogging.sendMessageToApp(this@addToLogsToBeSentToViewer)
+        SurfaceLogging.sendMessageToApp(this@addToLogsToBeSentToViewer)
     }
 }
 

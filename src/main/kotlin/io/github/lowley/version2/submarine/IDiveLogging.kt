@@ -1,10 +1,10 @@
-package io.github.lowley.version2.dive
+package io.github.lowley.version2.submarine
 
 import io.github.lowley.common.RichLog
 import io.github.lowley.version2.common.StateMessage
 import kotlinx.coroutines.flow.StateFlow
 
-interface IAppLogging {
+interface IDiveLogging {
 
     //////////////////////////
     // démarrage du service //

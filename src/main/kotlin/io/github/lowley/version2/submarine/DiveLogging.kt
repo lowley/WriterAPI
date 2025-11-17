@@ -1,4 +1,4 @@
-package io.github.lowley.version2.dive
+package io.github.lowley.version2.submarine
 
 import io.github.lowley.common.RichLog
 import io.github.lowley.common.ServerMessage
@@ -9,9 +9,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import io.github.lowley.version2.dive.utils.AppStateMachineManager.InitializeAppLogging
+import io.github.lowley.version2.submarine.utils.DiveStateMachineManager.InitializeAppLogging
 
-object AppLogging : IAppLogging {
+object DiveLogging : IDiveLogging {
 
     //////////////////////////
     // démarrage du service //
@@ -53,7 +53,7 @@ object AppLogging : IAppLogging {
 
     /**
      * Méthode interne pour envoyer les ServerMessages reçus vers "message" qui est lu par l'app
-     * @see AppLogging.logs
+     * @see DiveLogging.logs
       */
     // voir [[plogs]]
     internal suspend fun sendMessageToApp(log: ServerMessage) {
@@ -63,6 +63,6 @@ object AppLogging : IAppLogging {
 
 // #[[RichLog.addToLogsToBeSentToViewer]]
 fun RichLog.addToLogsToBeSentToViewer() {
-    AppLogging.sendLogToAPI(this)
+    DiveLogging.sendLogToAPI(this)
 }
 

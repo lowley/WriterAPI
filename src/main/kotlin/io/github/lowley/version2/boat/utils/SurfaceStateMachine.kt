@@ -1,4 +1,4 @@
-package io.github.lowley.version2.surface.utils
+package io.github.lowley.version2.boat.utils
 
 import arrow.core.Either
 import arrow.core.None
@@ -17,8 +17,8 @@ import io.github.lowley.version2.common.NetworkBehavior
 import io.github.lowley.version2.common.Success
 import io.github.lowley.version2.common.toErrorMessage
 import io.github.lowley.version2.common.toStateMessage
-import io.github.lowley.version2.dive.utils.AppStateMachineManager.AndroidAppStates.Connected.machine
-import io.github.lowley.version2.surface.ViewerLogging
+import io.github.lowley.version2.submarine.utils.DiveStateMachineManager.DiveStates.Connected.machine
+import io.github.lowley.version2.boat.SurfaceLogging
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -42,8 +42,8 @@ import kotlinx.coroutines.withContext
 import ru.nsk.kstatemachine.statemachine.BuildingStateMachine
 import java.io.BufferedWriter
 
-internal class ViewerStateMachineManager(
-    val component: ViewerLogging,
+internal class SurfaceStateMachineManager(
+    val component: SurfaceLogging,
     val deviceAPI: IDeviceAPI
 ) {
 
@@ -97,7 +97,7 @@ internal class ViewerStateMachineManager(
     //c'est l'état Disconnected qui se charge de l'obtention du socket
     context(scope: BuildingStateMachine)
     private suspend fun disconnectedState() = with(scope) {
-        addInitialState(ViewerAppStates.Disconnected) {
+        addInitialState(SurfaceStates.Disconnected) {
             onEntry { scope ->
                 if (component.isLoggingEnabledFlow.value) {
                     var result: Either<AdbError, Socket>? = null
@@ -132,7 +132,7 @@ internal class ViewerStateMachineManager(
 
             // transition -> CONNECTED
             transition<SurfaceConnect> {
-                targetState = ViewerAppStates.Connected
+                targetState = SurfaceStates.Connected
                 onTriggered { scope ->
                     println("transition StartListening")
                 }
@@ -140,7 +140,7 @@ internal class ViewerStateMachineManager(
 
             // transition -> GOONERROR
             transition<SurfaceGoOnError> {
-                targetState = ViewerAppStates.Error
+                targetState = SurfaceStates.Error
                 onTriggered { scope ->
                     println("transition GoOnError")
                     scope.transition.argument = scope.event.text
@@ -149,7 +149,7 @@ internal class ViewerStateMachineManager(
 
             // transition -> DISABLE
             transition<SurfaceDisable> {
-                targetState = ViewerAppStates.Disabled
+                targetState = SurfaceStates.Disabled
                 onTriggered { scope ->
                     println("transition Disable")
                 }
@@ -162,7 +162,7 @@ internal class ViewerStateMachineManager(
     ///////////////
     context(scope: BuildingStateMachine)
     private suspend fun connectedState() = with(scope) {
-        addState(ViewerAppStates.Connected) {
+        addState(SurfaceStates.Connected) {
             onEntry { scope ->
                 println("state Connected: socket=$socket")
 
@@ -219,7 +219,7 @@ internal class ViewerStateMachineManager(
 
             // transition -> DISCONNECT
             transition<SurfaceDisconnect> {
-                targetState = ViewerAppStates.Disconnected
+                targetState = SurfaceStates.Disconnected
                 onTriggered { scope ->
                     println("transition Disconnect")
                     socket.onSome { it.close() }
@@ -228,7 +228,7 @@ internal class ViewerStateMachineManager(
 
             // transition -> DISABLE
             transition<SurfaceDisable> {
-                targetState = ViewerAppStates.Disabled
+                targetState = SurfaceStates.Disabled
                 onTriggered { scope ->
                     println("transition Disable")
                 }
@@ -241,7 +241,7 @@ internal class ViewerStateMachineManager(
     ///////////
     context(scope: BuildingStateMachine)
     private suspend fun errorState() = with(scope) {
-        addState(ViewerAppStates.Error) {
+        addState(SurfaceStates.Error) {
             onEntry { scope ->
                 if (!component.isLoggingEnabledFlow.value) {
                     component.setStateMessage("Désactivation demandée".toStateMessage())
@@ -258,14 +258,14 @@ internal class ViewerStateMachineManager(
             //manuel
             // transition -> DISCONNECT
             transition<SurfaceDisconnect> {
-                targetState = ViewerAppStates.Disconnected
+                targetState = SurfaceStates.Disconnected
                 onTriggered { scope ->
                 }
             }
 
             // transition -> DISABLE
             transition<SurfaceDisable> {
-                targetState = ViewerAppStates.Disabled
+                targetState = SurfaceStates.Disabled
                 onTriggered { scope ->
                     println("transition Disable")
                 }
@@ -278,7 +278,7 @@ internal class ViewerStateMachineManager(
     //////////////
     context(scope: BuildingStateMachine)
     private suspend fun disabledState() = with(scope) {
-        addState(ViewerAppStates.Disabled) {
+        addState(SurfaceStates.Disabled) {
             onEntry { scope ->
                 val sc = CoroutineScope(Dispatchers.Default + SupervisorJob())
                 sc.launch {
@@ -297,7 +297,7 @@ internal class ViewerStateMachineManager(
 
             // transition -> DISCONNECT
             transition<SurfaceDisconnect> {
-                targetState = ViewerAppStates.Disconnected
+                targetState = SurfaceStates.Disconnected
                 onTriggered { scope ->
                     println("transition Disconnect")
                 }
@@ -386,16 +386,10 @@ internal class ViewerStateMachineManager(
     }
 }
 
-internal sealed class ViewerAppStates : DefaultState() {
-    object Disabled : ViewerAppStates()
-    object Disconnected : ViewerAppStates()
-    object Listening : ViewerAppStates()
-    object Connected : ViewerAppStates()
-    object Error : ViewerAppStates()
-}
+
 
 internal object InitializeViewerLogging {
-    private val stateMachine: ViewerStateMachineManager by inject(ViewerStateMachineManager::class.java)
+    private val stateMachine: SurfaceStateMachineManager by inject(SurfaceStateMachineManager::class.java)
 
     init {
         println(stateMachine.toString().substring(0, 0))

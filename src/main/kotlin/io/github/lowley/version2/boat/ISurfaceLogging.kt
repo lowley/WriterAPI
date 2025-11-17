@@ -1,4 +1,4 @@
-package io.github.lowley.version2.surface
+package io.github.lowley.version2.boat
 
 import arrow.core.Either
 import io.github.lowley.common.AdbError
@@ -9,7 +9,7 @@ import io.github.lowley.version2.common.Success
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
-interface IViewerLogging {
+interface ISurfaceLogging {
 
     //////////////////////////
     // démarrage du service //

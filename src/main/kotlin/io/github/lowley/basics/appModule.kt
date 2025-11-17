@@ -7,14 +7,14 @@ import io.github.lowley.emitter.LoggerCommunicationAPI
 import io.github.lowley.emitter.Parser
 import io.github.lowley.receiver.DeviceAPI
 import io.github.lowley.receiver.IDeviceAPI
-import io.github.lowley.version2.dive.AppLogging
-import io.github.lowley.version2.dive.IAppLogging
-import io.github.lowley.version2.surface.IViewerLogging
-import io.github.lowley.version2.surface.ViewerLogging
+import io.github.lowley.version2.submarine.DiveLogging
+import io.github.lowley.version2.submarine.IDiveLogging
+import io.github.lowley.version2.boat.ISurfaceLogging
+import io.github.lowley.version2.boat.SurfaceLogging
 
 import org.koin.dsl.module
-import io.github.lowley.version2.dive.utils.AppStateMachineManager
-import io.github.lowley.version2.surface.utils.ViewerStateMachineManager
+import io.github.lowley.version2.submarine.utils.DiveStateMachineManager
+import io.github.lowley.version2.boat.utils.SurfaceStateMachineManager
 
 val appModule = module {
     single<IParser> { Parser() }
@@ -22,12 +22,12 @@ val appModule = module {
     single { LogBuilder(get(), get()) }
     single<IDeviceAPI> { DeviceAPI() }
 
-    single<IAppLogging> { AppLogging }
-    single<AppLogging> { AppLogging }
+    single<IDiveLogging> { DiveLogging }
+    single<DiveLogging> { DiveLogging }
 
-    single<IViewerLogging> { ViewerLogging }
-    single<ViewerLogging> { ViewerLogging }
+    single<ISurfaceLogging> { SurfaceLogging }
+    single<SurfaceLogging> { SurfaceLogging }
 
-    single {  AppStateMachineManager(get(), get()) }
-    single {  ViewerStateMachineManager(get(), get()) }
+    single {  DiveStateMachineManager(get(), get()) }
+    single {  SurfaceStateMachineManager(get(), get()) }
 }

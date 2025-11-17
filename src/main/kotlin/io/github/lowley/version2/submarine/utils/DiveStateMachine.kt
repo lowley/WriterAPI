@@ -40,7 +40,6 @@ import io.github.lowley.version2.common.ErrorMessage
 import io.github.lowley.version2.common.toErrorMessage
 import io.github.lowley.version2.common.toStateMessage
 import io.github.lowley.version2.boat.utils.SurfaceStateMachineManager
-import io.github.lowley.version2.submarine.utils.DiveStateMachineManager.DiveStates.*
 import io.github.lowley.version2.common.NetworkBehavior
 import io.github.lowley.version2.common.Success
 import kotlinx.coroutines.CoroutineStart
@@ -50,6 +49,7 @@ import java.io.BufferedWriter
 import java.util.Calendar
 import kotlinx.coroutines.CancellationException
 import io.github.lowley.version2.common.*
+import io.github.lowley.version2.common.DiveStates.*
 
 internal class DiveStateMachineManager(
     val component: DiveLogging,
@@ -94,7 +94,7 @@ internal class DiveStateMachineManager(
     //////////////////
     context(scope: BuildingStateMachine)
     private suspend fun disconnectedState() = with(scope) {
-        addInitialState(DiveStateMachineManager.DiveStates.Disconnected)
+        addInitialState(DiveStates.Disconnected)
         {
             onEntry { scope ->
                 val result = deviceAPI.reverseAdbPort()
@@ -127,7 +127,7 @@ internal class DiveStateMachineManager(
             // transition -> DiveListen
             transition<DiveListen>
             {
-                targetState = Listening
+                targetState = DiveStates.Listening
                 onTriggered { scope ->
                     println("transition StartListening")
                 }

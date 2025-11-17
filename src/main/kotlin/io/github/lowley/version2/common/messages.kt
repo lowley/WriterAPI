@@ -46,5 +46,3 @@ enum class NetworkBehavior(text: String){
     Emitter("Emitter"),
     Receiver("Receiver"),
 }
-
-

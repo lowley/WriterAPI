@@ -356,7 +356,6 @@ internal class AppStateMachineManager(
         }
     }
 
-
     context(coroutineScope: CoroutineScope)
     fun createEmitterJob(socket: Socket) = coroutineScope.launch(start = CoroutineStart.LAZY) {
         for (log in component.logsToBeSentToViewer) {

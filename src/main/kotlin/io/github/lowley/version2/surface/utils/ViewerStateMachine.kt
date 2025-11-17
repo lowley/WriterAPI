@@ -5,7 +5,6 @@ import arrow.core.None
 import arrow.core.Option
 import arrow.core.raise.either
 import arrow.core.right
-import arrow.core.toOption
 import com.google.gson.Gson
 import io.github.lowley.common.AdbError
 import io.github.lowley.common.RichLog
@@ -18,6 +17,7 @@ import io.github.lowley.version2.common.NetworkBehavior
 import io.github.lowley.version2.common.Success
 import io.github.lowley.version2.common.toErrorMessage
 import io.github.lowley.version2.common.toStateMessage
+import io.github.lowley.version2.dive.utils.AppStateMachineManager.AndroidAppStates.Connected.machine
 import io.github.lowley.version2.surface.ViewerLogging
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -116,7 +116,7 @@ internal class ViewerStateMachineManager(
                             machine.processEvent(SurfaceGoOnError(error.toErrorMessage()))
                         },
                         ifRight = {
-                            socket = result.getOrNull().toOption()
+                            socket = result.getOrNone()
                             component.setStateMessage("Connexion établie".toStateMessage())
                             println("state Disconnected: connexion établie à $HHmmss")
                             machine.processEvent(SurfaceConnect)
@@ -130,9 +130,9 @@ internal class ViewerStateMachineManager(
             }
             onExit { }
 
-            // transition -> LISTEN
-            transition<SurfaceListen> {
-                targetState = ViewerAppStates.Listening
+            // transition -> CONNECTED
+            transition<SurfaceConnect> {
+                targetState = ViewerAppStates.Connected
                 onTriggered { scope ->
                     println("transition StartListening")
                 }
@@ -164,6 +164,14 @@ internal class ViewerStateMachineManager(
     private suspend fun connectedState() = with(scope) {
         addState(ViewerAppStates.Connected) {
             onEntry { scope ->
+                println("state Connected: socket=$socket")
+
+                if (!component.isLoggingEnabledFlow.value) {
+                    component.setStateMessage("Désactivation demandée".toStateMessage())
+                    machine.processEvent(SurfaceDisable)
+                    return@onEntry
+                }
+
                 if (socket == null) {
                     println("state Connected: socket reçue vide")
                     machine.processEvent(SurfaceGoOnError("erreur interne de socket".toErrorMessage()))
@@ -188,7 +196,7 @@ internal class ViewerStateMachineManager(
                             }
                             println("state Connected: erreur d'émission")
                             component.setStateMessage("erreur d'émission d'un message".toStateMessage())
-                            machine.processEvent(SurfaceListen)
+                            machine.processEvent(SurfaceDisconnect)
                         }
 
                         NetworkBehavior.Receiver.name -> {
@@ -198,41 +206,14 @@ internal class ViewerStateMachineManager(
                             }
                             println("state Connected: erreur de réception")
                             component.setStateMessage("erreur de réception de message du Viewer".toStateMessage())
-                            machine.processEvent(SurfaceListen)
+                            machine.processEvent(SurfaceDisconnect)
                         }
                     }
                 }
 
-
-
-
-                if (!component.isLoggingEnabledFlow.value) {
-                    component.setStateMessage("Désactivation demandée".toStateMessage())
-                    machine.processEvent(SurfaceDisable)
-                    return@onEntry
-                }
-
-                val socket = scope.transition.argument as? Socket
-                println("state Connected: socket=$socket")
-                if (socket != null) {
-                    deviceAPI.readClientLines(socket) { line ->
-                        println("state Connected: line=$line")
-                        try {
-                            val event = Gson().fromJson(line, RichLog::class.java)
-                            println("state Connecté: reçu log (brut=${event.raw()})")
-                            withContext(Dispatchers.Main) {
-                                component.emit(event)
-                                println("state Connected: log émis")
-                            }
-
-                        } catch (ex: Exception) {
-                            println("state Connecté: erreur lors parsing de : $line")
-                        }
-                    }
-                }
-
-                component.setStateMessage("Déconnexion initiée par le correspondant".toStateMessage())
-                machine.processEvent(SurfaceDisconnect)
+                //???
+//                component.setStateMessage("Déconnexion initiée par le correspondant".toStateMessage())
+//                machine.processEvent(SurfaceDisconnect)
             }
             onExit { }
 
@@ -241,8 +222,7 @@ internal class ViewerStateMachineManager(
                 targetState = ViewerAppStates.Disconnected
                 onTriggered { scope ->
                     println("transition Disconnect")
-                    val socket = scope.transition.argument as? Socket
-                    socket?.close()
+                    socket.onSome { it.close() }
                 }
             }
 
@@ -329,7 +309,7 @@ internal class ViewerStateMachineManager(
     fun createEmitterJob(socket: Socket) = coroutineScope.launch(start = CoroutineStart.LAZY) {
         for (message in component.messagesToBeSentToApp) {
 
-            val emissionRresult = component.sendMessageToApp(message)
+            val emissionRresult = sendMessage(message)
             emissionRresult.fold(
                 ifLeft = { error ->
                     throw CancellationException(NetworkBehavior.Emitter.name)
@@ -345,11 +325,11 @@ internal class ViewerStateMachineManager(
 
     context(coroutineScope: CoroutineScope)
     fun createReceiverJob(socket: Socket) = coroutineScope.launch(start = CoroutineStart.LAZY) {
-        deviceAPI.readClientLines(socket!!) { line ->
+        deviceAPI.readClientLines(socket) { line ->
             try {
-                val event = Gson().fromJson(line, ServerMessage::class.java)
-                println("state Connecté: reçu message (brut=${event.text})")
-                component.sendMessageToApp(event)
+                val log = Gson().fromJson(line, RichLog::class.java)
+                println("state Connecté: reçu log (brut=${log.raw()})")
+                component.sendLogToViewer(log)
             } catch (ex: Exception) {
                 throw CancellationException(NetworkBehavior.Receiver.name)
 
@@ -357,32 +337,39 @@ internal class ViewerStateMachineManager(
 //                component.setStateMessage("erreur lors parsing".toStateMessage())
             }
         }
+
+        component.setStateMessage("Déconnexion initiée par le correspondant".toStateMessage())
+        machine.processEvent(SurfaceDisconnect)
     }
 
     suspend fun sendMessage(message: ServerMessage): Either<AdbError, Success> =
 
         withContext(Dispatchers.IO) {
             either {
-                try {
-                    if (socket == null)
+                socket.fold(
+                    ifSome = { socket ->
+                        try {
+                            val w = ensureWriter(socket).bind()
+
+                            val payload = Gson().toJson(message)
+                            w.write(payload)
+                            w.write("\n")
+                            w.flush()
+
+                            println("message emitted: $socket")
+
+                        } catch (ex: Exception) {
+                            ex.printStackTrace()
+                            socket.shutdownOutput()
+                            socket.close()
+                            // fait sortir du either avec un Left
+                            raise(AdbError.ExceptionThrown(ex))
+                        }
+                    },
+                    ifEmpty = {
                         raise(AdbError.CommandFailed(1, "socket invalide pour envoi de message"))
-
-                    val w = ensureWriter(socket).bind()
-
-                    val payload = Gson().toJson(richLog)
-                    w.write(payload)
-                    w.write("\n")
-                    w.flush()
-
-                    println("richLog emitted: ${richLog.raw()}")
-
-                } catch (ex: Exception) {
-                    ex.printStackTrace()
-                    socket.shutdownOutput()
-                    socket.close()
-                    // fait sortir du either avec un Left
-                    raise(AdbError.ExceptionThrown(ex))
-                }
+                    }
+                )
 
                 // Si on arrive ici, tout s'est bien passé
                 Success

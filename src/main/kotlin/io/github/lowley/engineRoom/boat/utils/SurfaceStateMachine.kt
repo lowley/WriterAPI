@@ -173,6 +173,7 @@ internal class SurfaceStateMachineManager() {
     ///////////////
     context(scope: BuildingStateMachine)
     private suspend fun connectedState() = with(scope) {
+
         addState(SurfaceStates.Connected) {
             onEntry { scope ->
                 println("state Connected: socket=$socket")
@@ -197,33 +198,13 @@ internal class SurfaceStateMachineManager() {
 
                 emitterJob.invokeOnCompletion { cause ->
                     if (cause is EmitterStopped) {
-                        try {
-                            socket.onSome { it.close() }
-                        } catch (_: Exception) {
-                        }
-                        println("state Connected: erreur d'émission")
-                        component.setStateMessage("erreur d'émission d'un message".toStateMessage())
-
-                        coroutineScope.launch(Dispatchers.Default) {
-                            machine.processEvent(SurfaceDisconnect)
-                        }
+                        onEmitterCancellation()
                     }
                 }
 
                 receiverJob.invokeOnCompletion { cause ->
                     if (cause is ReceiverStopped) {
-                        try {
-                            socket.onSome { it.close() }
-                        } catch (_: Exception) {
-                        }
-                        println("state Connected: erreur de réception/ déconnexion du client")
-                        component.setStateMessage(
-                            "erreur de réception de message du Viewer / déconnexion".toStateMessage()
-                        )
-
-                        coroutineScope.launch(Dispatchers.Default) {
-                            machine.processEvent(SurfaceDisconnect)
-                        }
+                        onReceiverCancellation()
                     }
                 }
 
@@ -248,6 +229,40 @@ internal class SurfaceStateMachineManager() {
                     println("transition Disable")
                 }
             }
+        }
+    }
+
+    /////////////////////////
+    // échec de l'émission //
+    /////////////////////////
+    fun SurfaceStates.Connected.onEmitterCancellation() {
+        try {
+            socket.onSome { it.close() }
+        } catch (_: Exception) {
+        }
+        println("state Connected: erreur d'émission")
+        component.setStateMessage("erreur d'émission d'un message".toStateMessage())
+
+        coroutineScope.launch(Dispatchers.Default) {
+            machine.processEvent(SurfaceDisconnect)
+        }
+    }
+
+    ///////////////////////////
+    // échec de la réception //
+    ///////////////////////////
+    fun SurfaceStates.Connected.onReceiverCancellation() {
+        try {
+            socket.onSome { it.close() }
+        } catch (_: Exception) {
+        }
+        println("state Connected: erreur de réception/ déconnexion du client")
+        component.setStateMessage(
+            "erreur de réception de message du Viewer / déconnexion".toStateMessage()
+        )
+
+        coroutineScope.launch(Dispatchers.Default) {
+            machine.processEvent(SurfaceDisconnect)
         }
     }
 

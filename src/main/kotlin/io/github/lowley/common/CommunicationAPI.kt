@@ -3,10 +3,11 @@ package io.github.lowley.common
 import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import java.io.IOException
 import java.net.ServerSocket
 import java.net.Socket
-import java.net.UnknownHostException
 
 fun serverSocket(port: Int = 7777): Either<AdbError, ServerSocket> = try {
     val result = ServerSocket(port)
@@ -39,4 +40,24 @@ catch (ex: Exception) {
 sealed interface AdbError {
     data class CommandFailed(val exitCode: Int, val output: String) : AdbError
     data class ExceptionThrown(val throwable: Throwable) : AdbError
+}
+
+
+
+internal fun readClientLines(
+    client: Socket,
+    scope: CoroutineScope,
+    onLineReceived: suspend (line: String) -> Unit
+) {
+
+    client.getInputStream()
+        .bufferedReader(Charsets.UTF_8)
+        .use { reader ->
+            for (line in reader.lineSequence()) {
+                // traite line
+                scope.launch {
+                    onLineReceived(line)
+                }
+            }
+        }
 }

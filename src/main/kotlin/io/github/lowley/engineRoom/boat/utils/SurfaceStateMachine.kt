@@ -3,18 +3,14 @@ package io.github.lowley.engineRoom.boat.utils
 import arrow.core.Either
 import arrow.core.None
 import arrow.core.Option
-import arrow.core.raise.either
-import arrow.core.right
 import com.google.gson.Gson
 import io.github.lowley.common.AdbError
 import io.github.lowley.common.RichLog
-import io.github.lowley.common.ServerMessage
+import io.github.lowley.common.readClientLines
 import io.github.lowley.common.socket
-import io.github.lowley.receiver.IDeviceAPI
 import io.github.lowley.engineRoom.common.*
 import io.github.lowley.engineRoom.common.ErrorMessage
 import io.github.lowley.engineRoom.common.NetworkBehavior
-import io.github.lowley.engineRoom.common.Success
 import io.github.lowley.engineRoom.common.toErrorMessage
 import io.github.lowley.engineRoom.common.toStateMessage
 import io.github.lowley.engineRoom.boat.SurfaceLogging
@@ -34,17 +30,15 @@ import ru.nsk.kstatemachine.statemachine.createStateMachine
 import ru.nsk.kstatemachine.transition.onTriggered
 import java.net.Socket
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
-import lorry.basics.appModule
+import lorry.basics.periscopeInjections
 import org.koin.core.Koin
 import org.koin.core.KoinApplication
 import org.koin.dsl.koinApplication
 import ru.nsk.kstatemachine.statemachine.BuildingStateMachine
-import java.io.BufferedWriter
 
 internal class SurfaceStateMachineManager() {
     val component: SurfaceLogging = InitializeViewerLogging.koin.get()
-    val deviceAPI: IDeviceAPI = InitializeViewerLogging.koin.get()
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private var HHmmss: String? =
         java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss").format(java.time.LocalTime.now())
@@ -100,7 +94,7 @@ internal class SurfaceStateMachineManager() {
         addInitialState(SurfaceStates.Disconnected) {
             onEntry { scope ->
 
-                val result0 = deviceAPI.reverseAdbPort()
+                val result0 = reverseAdbPort()
                 result0.fold(
                     ifLeft = { error ->
                         println("state Disconnected: reverseAdb en erreur")
@@ -339,7 +333,7 @@ internal class SurfaceStateMachineManager() {
 
     context(coroutineScope: CoroutineScope)
     fun createReceiverJob(socket: Socket) = coroutineScope.launch(start = CoroutineStart.LAZY) {
-        deviceAPI.readClientLines(socket) { line ->
+        readClientLines(socket, scope) { line ->
             try {
                 val log = Gson().fromJson(line, RichLog::class.java)
                 println("state Connecté: reçu log (brut=${log.raw()})")
@@ -355,53 +349,10 @@ internal class SurfaceStateMachineManager() {
         component.setStateMessage("Déconnexion initiée par le correspondant".toStateMessage())
         DiveStates.Connected.machine.processEvent(SurfaceDisconnect)
     }
-
-    suspend fun sendMessage(message: ServerMessage): Either<AdbError, Success> =
-
-        withContext(Dispatchers.IO) {
-            either {
-                socket.fold(
-                    ifSome = { socket ->
-                        try {
-                            val w = ensureWriter(socket).bind()
-
-                            val payload = Gson().toJson(message)
-                            w.write(payload)
-                            w.write("\n")
-                            w.flush()
-
-                            println("message emitted: $socket")
-
-                        } catch (ex: Exception) {
-                            ex.printStackTrace()
-                            socket.shutdownOutput()
-                            socket.close()
-                            // fait sortir du either avec un Left
-                            raise(AdbError.ExceptionThrown(ex))
-                        }
-                    },
-                    ifEmpty = {
-                        raise(AdbError.CommandFailed(1, "socket invalide pour envoi de message"))
-                    }
-                )
-
-                // Si on arrive ici, tout s'est bien passé
-                Success
-            }
-        }
-
-    private fun ensureWriter(socket: Socket): Either<AdbError, BufferedWriter> = either {
-        try {
-            val w = socket.getOutputStream().bufferedWriter(Charsets.UTF_8)
-            return w.right()
-        } catch (ex: Exception) {
-            raise(AdbError.ExceptionThrown(ex))
-        }
-    }
 }
 
 internal object InitializeViewerLogging {
-    private val app: KoinApplication = koinApplication { modules(appModule) }
+    private val app: KoinApplication = koinApplication { modules(periscopeInjections) }
     val koin: Koin get() = app.koin
 
     //on déclenche l'initialisation de la machine

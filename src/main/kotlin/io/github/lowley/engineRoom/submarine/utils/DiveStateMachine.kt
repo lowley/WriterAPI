@@ -15,9 +15,9 @@ import io.github.lowley.common.RichText
 import io.github.lowley.common.ServerMessage
 import io.github.lowley.common.Style
 import io.github.lowley.common.TextType
+import io.github.lowley.common.readClientLines
 import io.github.lowley.common.searchClient
 import io.github.lowley.common.serverSocket
-import io.github.lowley.receiver.IDeviceAPI
 import io.github.lowley.engineRoom.submarine.DiveLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -46,15 +46,13 @@ import java.util.Calendar
 import kotlinx.coroutines.CancellationException
 import io.github.lowley.engineRoom.common.*
 import io.github.lowley.engineRoom.common.DiveStates.*
-import lorry.basics.appModule
+import lorry.basics.periscopeInjections
 import org.koin.core.Koin
 import org.koin.core.KoinApplication
 import org.koin.dsl.koinApplication
 
 internal class DiveStateMachineManager() {
     val component: DiveLogging = InitializeAppLogging.koin.get()
-    val deviceAPI: IDeviceAPI = InitializeAppLogging.koin.get()
-
 
     val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     var adbComMachine: StateMachine? = null
@@ -366,7 +364,7 @@ internal class DiveStateMachineManager() {
 
     context(coroutineScope: CoroutineScope)
     fun createReceiverJob(socket: Socket) = coroutineScope.launch(start = CoroutineStart.LAZY) {
-        deviceAPI.readClientLines(socket!!) { line ->
+        readClientLines(socket, scope) { line ->
             try {
                 val event = Gson().fromJson(line, ServerMessage::class.java)
                 println("state Connecté: reçu message (brut=${event.text})")
@@ -383,7 +381,7 @@ internal class DiveStateMachineManager() {
 
     internal object InitializeAppLogging {
 
-        private val app: KoinApplication = koinApplication { modules(appModule) }
+        private val app: KoinApplication = koinApplication { modules(periscopeInjections) }
         val koin: Koin get() = app.koin
 
         //on déclenche l'initialisation de la machine

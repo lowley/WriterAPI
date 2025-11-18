@@ -5,6 +5,8 @@ import io.github.lowley.common.RichSegment
 import io.github.lowley.common.RichText
 import io.github.lowley.engineRoom.submarine.DiveLogging
 import io.github.lowley.engineRoom.submarine.utils.DiveStateMachineManager
+import io.github.lowley.logBook.support.IParser
+import io.github.lowley.logBook.support.LogMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

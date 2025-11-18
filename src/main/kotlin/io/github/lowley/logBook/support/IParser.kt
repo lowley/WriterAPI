@@ -1,4 +1,4 @@
-package io.github.lowley.logBook
+package io.github.lowley.logBook.support
 
 import io.github.lowley.common.RichSegment
 

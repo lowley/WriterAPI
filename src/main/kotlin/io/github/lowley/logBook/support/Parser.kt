@@ -1,4 +1,4 @@
-package io.github.lowley.logBook
+package io.github.lowley.logBook.support
 
 import io.github.lowley.common.RichSegment
 import io.github.lowley.common.Style
@@ -52,9 +52,6 @@ class Parser: IParser {
 //            }
         }
         return style
-
-
-
     }
 }
 

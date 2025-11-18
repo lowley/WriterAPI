@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.BufferedWriter
 import java.net.Socket
+import kotlin.coroutines.cancellation.CancellationException
 
 suspend internal fun SurfaceStateMachineManager.sendMessage(message: ServerMessage): Either<AdbError, Success> =
 
@@ -77,3 +78,5 @@ internal fun reverseAdbPort(port: Int = 7777): Either<AdbError, Unit> = try {
     AdbError.ExceptionThrown(ex).left()
 }
 
+class ReceiverStopped : CancellationException("ReceiverStopped")
+class EmitterStopped : CancellationException("EmitterStopped")

@@ -18,6 +18,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import ru.nsk.kstatemachine.state.addInitialState
@@ -35,15 +36,17 @@ import org.koin.core.Koin
 import org.koin.core.KoinApplication
 import org.koin.dsl.koinApplication
 import ru.nsk.kstatemachine.statemachine.BuildingStateMachine
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
 internal class SurfaceStateMachineManager() {
     val component: SurfaceLogging = InitializeViewerLogging.koin.get()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private var HHmmss: String? =
-        java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss").format(java.time.LocalTime.now())
-        get() = java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")
-            .format(java.time.LocalTime.now())
+        DateTimeFormatter.ofPattern("HH:mm:ss").format(LocalTime.now())
+        get() = DateTimeFormatter.ofPattern("HH:mm:ss")
+            .format(LocalTime.now())
 
     val coroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     var adbComMachine: StateMachine? = null
@@ -185,43 +188,47 @@ internal class SurfaceStateMachineManager() {
                     machine.processEvent(SurfaceGoOnError("erreur interne de socket".toErrorMessage()))
                 }
 
-                var emitterJob = with(coroutineScope) { createEmitterJob(socket.getOrNull()!!) }
-                var receiverJob = with(coroutineScope) { createReceiverJob(socket.getOrNull()!!) }
-
                 ////////////////////////////////
                 // gestion emitter & receiver //
                 ////////////////////////////////
 
-                try {
-                    emitterJob.start()
-                    receiverJob.start()
-                } catch (ex: CancellationException) {
-                    when (ex.message) {
-                        NetworkBehavior.Emitter.name -> {
-                            try {
-                                socket.onSome { it.close() }
-                            } catch (_: Exception) {
-                            }
-                            println("state Connected: erreur d'émission")
-                            component.setStateMessage("erreur d'émission d'un message".toStateMessage())
-                            machine.processEvent(SurfaceDisconnect)
-                        }
+                var emitterJob = with(coroutineScope) { createEmitterJob(socket.getOrNull()!!) }
+                var receiverJob = with(coroutineScope) { createReceiverJob(socket.getOrNull()!!) }
 
-                        NetworkBehavior.Receiver.name -> {
-                            try {
-                                socket.onSome { it.close() }
-                            } catch (_: Exception) {
-                            }
-                            println("state Connected: erreur de réception")
-                            component.setStateMessage("erreur de réception de message du Viewer".toStateMessage())
+                emitterJob.invokeOnCompletion { cause ->
+                    if (cause is EmitterStopped) {
+                        try {
+                            socket.onSome { it.close() }
+                        } catch (_: Exception) {
+                        }
+                        println("state Connected: erreur d'émission")
+                        component.setStateMessage("erreur d'émission d'un message".toStateMessage())
+
+                        coroutineScope.launch(Dispatchers.Default) {
                             machine.processEvent(SurfaceDisconnect)
                         }
                     }
                 }
 
-                //???
-//                component.setStateMessage("Déconnexion initiée par le correspondant".toStateMessage())
-//                machine.processEvent(SurfaceDisconnect)
+                receiverJob.invokeOnCompletion { cause ->
+                    if (cause is ReceiverStopped) {
+                        try {
+                            socket.onSome { it.close() }
+                        } catch (_: Exception) {
+                        }
+                        println("state Connected: erreur de réception/ déconnexion du client")
+                        component.setStateMessage(
+                            "erreur de réception de message du Viewer / déconnexion".toStateMessage()
+                        )
+
+                        coroutineScope.launch(Dispatchers.Default) {
+                            machine.processEvent(SurfaceDisconnect)
+                        }
+                    }
+                }
+
+                emitterJob.start()
+                receiverJob.start()
             }
             onExit { }
 
@@ -289,14 +296,15 @@ internal class SurfaceStateMachineManager() {
         addState(SurfaceStates.Disabled) {
             onEntry { scope ->
                 val sc = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
+                var exit = false
                 sc.launch {
-                    while (true) {
+                    while (!exit) {
                         if (component.isLoggingEnabledFlow.value) {
                             machine.processEvent(SurfaceDisconnect)
-                            return@launch
-                        }
-
-                        delay(500)
+                            exit = true
+                        } else
+                            delay(500)
                     }
                 }
             }
@@ -320,7 +328,7 @@ internal class SurfaceStateMachineManager() {
             val emissionRresult = sendMessage(message)
             emissionRresult.fold(
                 ifLeft = { error ->
-                    throw CancellationException(NetworkBehavior.Emitter.name)
+                    throw EmitterStopped()
 //                    println("state Connected: émission en erreur")>
 //                    machine.processEvent(GoOnError("erreur lors d'émission".toErrorMessage()))
                 },
@@ -339,7 +347,7 @@ internal class SurfaceStateMachineManager() {
                 println("state Connecté: reçu log (brut=${log.raw()})")
                 component.sendLogToViewer(log)
             } catch (ex: Exception) {
-                throw CancellationException(NetworkBehavior.Receiver.name)
+                throw ReceiverStopped()
 
 //                println("state Connecté: erreur lors parsing de : $line")
 //                component.setStateMessage("erreur lors parsing".toStateMessage())
@@ -347,7 +355,7 @@ internal class SurfaceStateMachineManager() {
         }
 
         component.setStateMessage("Déconnexion initiée par le correspondant".toStateMessage())
-        DiveStates.Connected.machine.processEvent(SurfaceDisconnect)
+        throw ReceiverStopped()
     }
 }
 

@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "refacto WriterAPI.md",
+                "file": "comment le module bottomBar dépend de app.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "refacto WriterAPI"
+              "title": "comment le module bottomBar dépend de app"
             }
           }
         ]
@@ -40,7 +40,7 @@
             "state": {
               "type": "file-explorer",
               "state": {
-                "sortOrder": "alphabetical",
+                "sortOrder": "byModifiedTimeReverse",
                 "autoReveal": false
               },
               "icon": "lucide-folder-closed",
@@ -169,10 +169,11 @@
       "bases:Create new base": false
     }
   },
-  "active": "be553aa958b7dd17",
+  "active": "1c9fb6a629e3a685",
   "lastOpenFiles": [
-    "émission & réception sockets.md",
     "refacto WriterAPI.md",
+    "comment le module bottomBar dépend de app.md",
+    "émission & réception sockets.md",
     "parsing du texte avec JSoup.md",
     "Sappho.md",
     "1.md",
